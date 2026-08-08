@@ -227,7 +227,7 @@ function SubscriptionPage() {
                     <div>
                       <p className="text-lg font-semibold">Lingo Free</p>
                       <p className="mt-1 text-sm text-muted-foreground">
-                        Offre gratuite — 5 000 traductions incluses.
+                        Offre gratuite — 1 000 traductions incluses.
                       </p>
                     </div>
                     <span className="rounded-full bg-secondary px-3 py-1 text-[11px] font-semibold">

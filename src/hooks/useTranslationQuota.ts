@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useCurrentUser } from "@/hooks/useAuth";
 import { getTranslationQuota } from "@/lib/quota.functions";
 
-export const FREE_TRANSLATION_LIMIT = 5000;
+export const FREE_TRANSLATION_LIMIT = 1000;
 
 export type TranslationQuota = {
   used: number;
@@ -12,7 +12,7 @@ export type TranslationQuota = {
   isPremium: boolean;
 };
 
-/** Reads the centralised translation counter (free plan: 5 000 traductions). */
+/** Reads the centralised translation counter (free plan: 1 000 traductions). */
 export function useTranslationQuota() {
   const { data: user } = useCurrentUser();
   const fetchQuota = useServerFn(getTranslationQuota);

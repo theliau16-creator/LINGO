@@ -2,12 +2,12 @@
  * Centralised translation quota.
  *
  * Business rules:
- * - free plan: 5 000 real translations (cache hits are free),
+ * - free plan: 1 000 real translations (cache hits are free),
  * - premium: unlimited,
  * - the counter is server-side only; the client can read it but never write it.
  */
 
-export const FREE_TRANSLATION_LIMIT = 5000;
+export const FREE_TRANSLATION_LIMIT = 1000;
 export const QUOTA_REACHED = "TRANSLATION_QUOTA_REACHED";
 
 const PREMIUM_PRICE_IDS = ["lingo_premium_monthly", "lingo_premium_yearly"];

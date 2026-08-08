@@ -113,7 +113,7 @@ function PlaygroundPage() {
     onError: (error) =>
       toast.error(isQuotaError(error) ? "Quota atteint" : "Traduction impossible", {
         description: isQuotaError(error)
-          ? "Vos 5 000 traductions gratuites sont utilisées. Passez en Premium pour continuer."
+          ? "Vos 1 000 traductions gratuites sont utilisées. Passez en Premium pour continuer."
           : error instanceof Error
             ? error.message
             : "Réessayez.",
@@ -160,7 +160,7 @@ function PlaygroundPage() {
     onError: (error) =>
       toast.error(isQuotaError(error) ? "Quota atteint" : "Scénario interrompu", {
         description: isQuotaError(error)
-          ? "Vos 5 000 traductions gratuites sont utilisées. Passez en Premium pour continuer."
+          ? "Vos 1 000 traductions gratuites sont utilisées. Passez en Premium pour continuer."
           : error instanceof Error
             ? error.message
             : "Réessayez.",

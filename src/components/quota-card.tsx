@@ -26,7 +26,7 @@ export function QuotaCard() {
     );
   }
 
-  const limit = data.limit ?? 5000;
+  const limit = data.limit ?? 1000;
   const remaining = data.remaining ?? 0;
   const ratio = Math.min(100, Math.round((data.used / limit) * 100));
   const low = remaining <= limit * 0.1;
