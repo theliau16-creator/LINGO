@@ -86,3 +86,25 @@ marqués "code vérifié, test E2E en attente d'une session".
 - [ ] Test E2E de chaque route authentifiée avec un vrai compte (voir demande de connexion précédente)
 - [ ] Test réel d'un paiement Stripe sandbox (nécessite `STRIPE_SANDBOX_API_KEY`/`LOVABLE_API_KEY` configurées côté serveur)
 - [ ] Test réel d'une traduction (nécessite une conversation + 2 comptes)
+
+## Indépendance vis-à-vis de Lovable (décidé avec l'utilisateur, portée réduite : pas de réécriture complète)
+
+Décision : garder le code existant (déjà vérifié), retirer uniquement les
+dépendances Lovable encore actives. Rejeté : reconstruction complète du
+schéma DB / nouvelle intégration Stripe (l'utilisateur a choisi de garder
+la gateway Lovable pour Stripe). Pas d'installation Docker/Supabase local
+(l'utilisateur a choisi de garder le projet Supabase distant existant, qui
+ne dépend déjà pas de Lovable).
+
+- [x] OAuth Google/Apple — basculé de `lovable.auth.signInWithOAuth` (broker Lovable, 404 en local) vers `supabase.auth.signInWithOAuth` natif (`src/routes/auth.tsx`). Vérifié en navigateur : redirige vers `*.supabase.co/auth/v1/authorize` (plus de 404). Reste bloqué sur "provider non configuré côté dashboard Supabase" — hors dépôt.
+- [x] Branding "Lingo AI" — déjà correct dans le code source (`src/services/translation/types.ts` `AVAILABLE_ENGINES`), aucun nom de vendor (Google/DeepL/OpenAI) affiché à l'utilisateur pour le moteur par défaut. Aucun changement nécessaire.
+- [~] Stripe — toujours via la gateway Lovable (`connector-gateway.lovable.dev`), décision explicite de l'utilisateur de ne pas basculer vers Stripe direct maintenant (nécessiterait de vraies clés test Stripe qu'il n'a pas encore fournies).
+- [~] `.lovable/`, MCP interne (`src/lib/mcp/`, routes `[.mcp]`, `[.well-known]`) — non supprimés : ce sont des surfaces techniques inertes (rien ne les appelle sauf un client MCP externe), pas une dépendance bloquante pour lancer/développer l'app. À trancher séparément si l'utilisateur veut les retirer.
+- [ ] Supabase local (Docker) — non fait, décision explicite de l'utilisateur de garder le projet distant existant.
+
+## Nouvelles fonctionnalités demandées (absentes du dépôt source Lovable — hors périmètre d'un portage 1:1, ajoutées sur demande explicite)
+
+- [x] Notifications réellement câblées — `src/hooks/useNotificationBridge.ts`, monté une fois dans `_authenticated/route.tsx`. Déclenche `NotificationService.notify()` sur : nouveau message reçu (canal Realtime `messages`, hors conversation ouverte), nouvelle demande d'ami reçue (canal Realtime `friend_requests`), changement de statut d'abonnement (canal Realtime `subscriptions` — Premium activé / paiement échoué). Auparavant le service existait mais n'était appelé que par le bouton de test dans Réglages. Compile, build OK. **Non testé en conditions réelles** (nécessite une session + permission navigateur accordée).
+- [x] Mute/Bloquer — déjà entièrement implémenté dans le code source (`contact-actions.tsx` : bloquer/débloquer via `blocked_users`, sourdine/réactiver via `conversation_participants.muted_at`). Aucune table `muted_users` séparée créée : la colonne existante fait déjà le travail et créer une table parallèle aurait dupliqué le schéma. Aucun changement nécessaire.
+- [~] Architecture message vocal — `src/services/speech/types.ts` (contrats `TranscriptionProvider`, `SpeechRecorder`) + `src/services/speech/local.server.ts` (stub `isConfigured: false`, même patron que les providers de traduction). **Architecture seule : aucune UI d'enregistrement, rien de fonctionnel.** Nécessiterait un vrai provider de transcription (clé API externe) et un composant d'enregistrement audio pour devenir une fonctionnalité réelle.
+- [~] Architecture appels audio/vidéo — `src/services/calls/types.ts` (contrats `CallSession`, `CallSignal`, `CallSignalingChannel`, `CallSubtitle` réutilisant transcription+traduction). **Architecture seule : pas de WebRTC, pas de signaling réel, pas d'UI.** La messagerie texte reste la fonctionnalité principale, conformément à la consigne de ne pas la sacrifier pour les appels.
