@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "lingo-dev",
+      "runtimeExecutable": "/Users/theliau16/.bun/bin/bun",
+      "runtimeArgs": ["run", "dev"],
+      "port": 8080
+    }
+  ]
+}
