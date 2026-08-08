@@ -1,0 +1,189 @@
+{
+  "version": 1,
+  "sdk_version": "0.26.1",
+  "path": "/mcp",
+  "auth": {
+    "type": "oauth",
+    "issuer": "https://btsazmbmslgghlgjkmkw.supabase.co/auth/v1",
+    "accepted_audiences": [
+      "authenticated"
+    ]
+  },
+  "mcp": {
+    "server": {
+      "name": "lingo",
+      "version": "0.1.0",
+      "title": "Lingo"
+    },
+    "tools": [
+      {
+        "name": "get_my_profile",
+        "title": "Get my profile",
+        "description": "Return the signed-in Lingo user's profile: username, languages, country and phone.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_conversations",
+        "title": "List conversations",
+        "description": "List the signed-in user's Lingo conversations, most recently active first, with the other participants.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": "integer",
+              "description": "Max conversations to return (default 20)."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "read_conversation",
+        "title": "Read a conversation",
+        "description": "Read recent messages of a Lingo conversation, including their original text and available translations.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "conversation_id": {
+              "type": "string",
+              "description": "Conversation id, from list_conversations."
+            },
+            "limit": {
+              "type": "integer",
+              "description": "Max messages to return (default 30)."
+            }
+          },
+          "required": [
+            "conversation_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "send_message",
+        "title": "Send a message",
+        "description": "Send a message as the signed-in user in a Lingo conversation. It is automatically translated for the other participants.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "conversation_id": {
+              "type": "string",
+              "description": "Conversation id, from list_conversations."
+            },
+            "text": {
+              "type": "string",
+              "description": "Message text, written in the sender's own language."
+            },
+            "language": {
+              "type": "string",
+              "description": "ISO-639-1 code of the message language. Defaults to the sender's primary language."
+            }
+          },
+          "required": [
+            "conversation_id",
+            "text"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_friends",
+        "title": "List friends",
+        "description": "List the signed-in user's Lingo friends with their username and languages.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "search_users",
+        "title": "Search Lingo users",
+        "description": "Search Lingo users by username to find someone to chat with.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "description": "Username fragment to search for."
+            }
+          },
+          "required": [
+            "query"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "start_conversation",
+        "title": "Start a conversation",
+        "description": "Open the one-to-one Lingo conversation with another user, creating it if it does not exist yet. Returns its id.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "user_id": {
+              "type": "string",
+              "description": "Id of the other user, from search_users or list_friends."
+            }
+          },
+          "required": [
+            "user_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}
