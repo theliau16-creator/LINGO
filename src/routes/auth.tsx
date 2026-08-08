@@ -5,7 +5,6 @@ import { toast } from "sonner";
 import { PhoneAuth } from "@/components/phone-auth";
 import { QrScanner } from "@/components/qr-scanner";
 import { redeemDeviceLinkToken } from "@/lib/device-link.functions";
-import { lovable } from "@/integrations/lovable/index";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/auth")({
@@ -79,16 +78,16 @@ function AuthPage() {
 
   async function handleOAuth(provider: "google" | "apple") {
     setLoading(true);
-    const result = await lovable.auth.signInWithOAuth(provider, {
-      redirect_uri: authRedirectUrl(),
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: { redirectTo: authRedirectUrl() },
     });
-    if (result.error) {
+    if (error) {
       setLoading(false);
-      toast.error("Connexion impossible", { description: result.error.message });
+      toast.error("Connexion impossible", { description: error.message });
       return;
     }
-    if (result.redirected) return;
-    goAfterAuth();
+    // signInWithOAuth redirects the browser away; nothing more to do here.
   }
 
   async function handleEmail(event: React.FormEvent) {
