@@ -24,11 +24,17 @@ import { Route as AuthenticatedPremiumRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticated/profile'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedSubscriptionRouteImport } from './routes/_authenticated/subscription'
+import { Route as ApiQuotaRouteImport } from './routes/api/quota'
 import { Route as JoinCodeRouteImport } from './routes/join.$code'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as AuthenticatedChatConversationIdRouteImport } from './routes/_authenticated/chat.$conversationId'
+import { Route as ApiDeviceLinkTokenRouteImport } from './routes/api/device-link/token'
+import { Route as ApiPreferencesChatRouteImport } from './routes/api/preferences/chat'
+import { Route as ApiPublicDeviceLinkRedeemRouteImport } from './routes/api/public/device-link/redeem'
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
+import { Route as ApiChatMessagesMessageIdTranslateRouteImport } from './routes/api/chat/messages.$messageId.translate'
+import { Route as ApiChatMessagesMessageIdTranslationRouteImport } from './routes/api/chat/messages.$messageId.translation'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -107,6 +113,11 @@ const AuthenticatedSubscriptionRoute =
     path: '/subscription',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const ApiQuotaRoute = ApiQuotaRouteImport.update({
+  id: '/api/quota',
+  path: '/api/quota',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const JoinCodeRoute = JoinCodeRouteImport.update({
   id: '/join/$code',
   path: '/join/$code',
@@ -129,10 +140,38 @@ const AuthenticatedChatConversationIdRoute =
     path: '/chat/$conversationId',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const ApiDeviceLinkTokenRoute = ApiDeviceLinkTokenRouteImport.update({
+  id: '/api/device-link/token',
+  path: '/api/device-link/token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPreferencesChatRoute = ApiPreferencesChatRouteImport.update({
+  id: '/api/preferences/chat',
+  path: '/api/preferences/chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicDeviceLinkRedeemRoute =
+  ApiPublicDeviceLinkRedeemRouteImport.update({
+    id: '/api/public/device-link/redeem',
+    path: '/api/public/device-link/redeem',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicPaymentsWebhookRoute =
   ApiPublicPaymentsWebhookRouteImport.update({
     id: '/api/public/payments/webhook',
     path: '/api/public/payments/webhook',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiChatMessagesMessageIdTranslateRoute =
+  ApiChatMessagesMessageIdTranslateRouteImport.update({
+    id: '/api/chat/messages/$messageId/translate',
+    path: '/api/chat/messages/$messageId/translate',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiChatMessagesMessageIdTranslationRoute =
+  ApiChatMessagesMessageIdTranslationRouteImport.update({
+    id: '/api/chat/messages/$messageId/translation',
+    path: '/api/chat/messages/$messageId/translation',
     getParentRoute: () => rootRouteImport,
   } as any)
 
@@ -151,11 +190,17 @@ export interface FileRoutesByFullPath {
   '/profile': typeof AuthenticatedProfileRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/subscription': typeof AuthenticatedSubscriptionRoute
+  '/api/quota': typeof ApiQuotaRoute
   '/join/$code': typeof JoinCodeRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/chat/$conversationId': typeof AuthenticatedChatConversationIdRoute
+  '/api/device-link/token': typeof ApiDeviceLinkTokenRoute
+  '/api/preferences/chat': typeof ApiPreferencesChatRoute
+  '/api/public/device-link/redeem': typeof ApiPublicDeviceLinkRedeemRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
+  '/api/chat/messages/$messageId/translate': typeof ApiChatMessagesMessageIdTranslateRoute
+  '/api/chat/messages/$messageId/translation': typeof ApiChatMessagesMessageIdTranslationRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -172,11 +217,17 @@ export interface FileRoutesByTo {
   '/profile': typeof AuthenticatedProfileRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/subscription': typeof AuthenticatedSubscriptionRoute
+  '/api/quota': typeof ApiQuotaRoute
   '/join/$code': typeof JoinCodeRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/chat/$conversationId': typeof AuthenticatedChatConversationIdRoute
+  '/api/device-link/token': typeof ApiDeviceLinkTokenRoute
+  '/api/preferences/chat': typeof ApiPreferencesChatRoute
+  '/api/public/device-link/redeem': typeof ApiPublicDeviceLinkRedeemRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
+  '/api/chat/messages/$messageId/translate': typeof ApiChatMessagesMessageIdTranslateRoute
+  '/api/chat/messages/$messageId/translation': typeof ApiChatMessagesMessageIdTranslationRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -195,11 +246,17 @@ export interface FileRoutesById {
   '/_authenticated/profile': typeof AuthenticatedProfileRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/subscription': typeof AuthenticatedSubscriptionRoute
+  '/api/quota': typeof ApiQuotaRoute
   '/join/$code': typeof JoinCodeRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/_authenticated/chat/$conversationId': typeof AuthenticatedChatConversationIdRoute
+  '/api/device-link/token': typeof ApiDeviceLinkTokenRoute
+  '/api/preferences/chat': typeof ApiPreferencesChatRoute
+  '/api/public/device-link/redeem': typeof ApiPublicDeviceLinkRedeemRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
+  '/api/chat/messages/$messageId/translate': typeof ApiChatMessagesMessageIdTranslateRoute
+  '/api/chat/messages/$messageId/translation': typeof ApiChatMessagesMessageIdTranslationRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -218,11 +275,17 @@ export interface FileRouteTypes {
     | '/profile'
     | '/settings'
     | '/subscription'
+    | '/api/quota'
     | '/join/$code'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/chat/$conversationId'
+    | '/api/device-link/token'
+    | '/api/preferences/chat'
+    | '/api/public/device-link/redeem'
     | '/api/public/payments/webhook'
+    | '/api/chat/messages/$messageId/translate'
+    | '/api/chat/messages/$messageId/translation'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -239,11 +302,17 @@ export interface FileRouteTypes {
     | '/profile'
     | '/settings'
     | '/subscription'
+    | '/api/quota'
     | '/join/$code'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/chat/$conversationId'
+    | '/api/device-link/token'
+    | '/api/preferences/chat'
+    | '/api/public/device-link/redeem'
     | '/api/public/payments/webhook'
+    | '/api/chat/messages/$messageId/translate'
+    | '/api/chat/messages/$messageId/translation'
   id:
     | '__root__'
     | '/'
@@ -261,11 +330,17 @@ export interface FileRouteTypes {
     | '/_authenticated/profile'
     | '/_authenticated/settings'
     | '/_authenticated/subscription'
+    | '/api/quota'
     | '/join/$code'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/_authenticated/chat/$conversationId'
+    | '/api/device-link/token'
+    | '/api/preferences/chat'
+    | '/api/public/device-link/redeem'
     | '/api/public/payments/webhook'
+    | '/api/chat/messages/$messageId/translate'
+    | '/api/chat/messages/$messageId/translation'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -276,10 +351,16 @@ export interface RootRouteChildren {
   ResetPasswordRoute: typeof ResetPasswordRoute
   Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  ApiQuotaRoute: typeof ApiQuotaRoute
   JoinCodeRoute: typeof JoinCodeRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
+  ApiDeviceLinkTokenRoute: typeof ApiDeviceLinkTokenRoute
+  ApiPreferencesChatRoute: typeof ApiPreferencesChatRoute
+  ApiPublicDeviceLinkRedeemRoute: typeof ApiPublicDeviceLinkRedeemRoute
   ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
+  ApiChatMessagesMessageIdTranslateRoute: typeof ApiChatMessagesMessageIdTranslateRoute
+  ApiChatMessagesMessageIdTranslationRoute: typeof ApiChatMessagesMessageIdTranslationRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -389,6 +470,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSubscriptionRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/api/quota': {
+      id: '/api/quota'
+      path: '/api/quota'
+      fullPath: '/api/quota'
+      preLoaderRoute: typeof ApiQuotaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/join/$code': {
       id: '/join/$code'
       path: '/join/$code'
@@ -417,11 +505,46 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedChatConversationIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/api/device-link/token': {
+      id: '/api/device-link/token'
+      path: '/api/device-link/token'
+      fullPath: '/api/device-link/token'
+      preLoaderRoute: typeof ApiDeviceLinkTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/preferences/chat': {
+      id: '/api/preferences/chat'
+      path: '/api/preferences/chat'
+      fullPath: '/api/preferences/chat'
+      preLoaderRoute: typeof ApiPreferencesChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/device-link/redeem': {
+      id: '/api/public/device-link/redeem'
+      path: '/api/public/device-link/redeem'
+      fullPath: '/api/public/device-link/redeem'
+      preLoaderRoute: typeof ApiPublicDeviceLinkRedeemRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/payments/webhook': {
       id: '/api/public/payments/webhook'
       path: '/api/public/payments/webhook'
       fullPath: '/api/public/payments/webhook'
       preLoaderRoute: typeof ApiPublicPaymentsWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/chat/messages/$messageId/translate': {
+      id: '/api/chat/messages/$messageId/translate'
+      path: '/api/chat/messages/$messageId/translate'
+      fullPath: '/api/chat/messages/$messageId/translate'
+      preLoaderRoute: typeof ApiChatMessagesMessageIdTranslateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/chat/messages/$messageId/translation': {
+      id: '/api/chat/messages/$messageId/translation'
+      path: '/api/chat/messages/$messageId/translation'
+      fullPath: '/api/chat/messages/$messageId/translation'
+      preLoaderRoute: typeof ApiChatMessagesMessageIdTranslationRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -463,10 +586,18 @@ const rootRouteChildren: RootRouteChildren = {
   Char91DotmcpChar93ListToolsRoute: Char91DotmcpChar93ListToolsRoute,
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
+  ApiQuotaRoute: ApiQuotaRoute,
   JoinCodeRoute: JoinCodeRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
+  ApiDeviceLinkTokenRoute: ApiDeviceLinkTokenRoute,
+  ApiPreferencesChatRoute: ApiPreferencesChatRoute,
+  ApiPublicDeviceLinkRedeemRoute: ApiPublicDeviceLinkRedeemRoute,
   ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,
+  ApiChatMessagesMessageIdTranslateRoute:
+    ApiChatMessagesMessageIdTranslateRoute,
+  ApiChatMessagesMessageIdTranslationRoute:
+    ApiChatMessagesMessageIdTranslationRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
