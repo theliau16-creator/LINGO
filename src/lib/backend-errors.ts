@@ -7,6 +7,15 @@
  * - secrets (tokens, OTP codes, API keys) are never logged.
  */
 
+import { getActiveLocale } from "./i18n/core";
+import { translateWith } from "./i18n/provider";
+import type { TranslationKey } from "./i18n/catalog";
+
+/** Localised sentence in the language currently rendered by the UI. */
+function say(key: TranslationKey, vars?: Record<string, string | number>): string {
+  return translateWith(getActiveLocale(), key, vars);
+}
+
 export type ErrorDomain =
   | "AUTH_ERROR"
   | "NETWORK_ERROR"
@@ -49,14 +58,14 @@ function raw(error: unknown): string {
   return anyError.message ?? anyError.error_description ?? "";
 }
 
-const DOMAIN_MESSAGES: Record<ErrorDomain, string> = {
-  AUTH_ERROR: "Connexion impossible pour le moment.",
-  NETWORK_ERROR: "Connexion instable. Réessayez dans un instant.",
-  MESSAGE_ERROR: "Le message n'a pas pu être envoyé.",
-  TRANSLATION_ERROR: "La traduction est momentanément indisponible.",
-  PAYMENT_ERROR: "Le paiement n'a pas pu aboutir.",
-  QR_ERROR: "Ce QR code n'est pas utilisable.",
-  DATABASE_ERROR: "Action impossible pour le moment.",
+const DOMAIN_KEYS: Record<ErrorDomain, TranslationKey> = {
+  AUTH_ERROR: "error.auth",
+  NETWORK_ERROR: "error.network",
+  MESSAGE_ERROR: "error.message",
+  TRANSLATION_ERROR: "error.translation",
+  PAYMENT_ERROR: "error.payment",
+  QR_ERROR: "error.qr",
+  DATABASE_ERROR: "error.database",
 };
 
 export function isOffline(): boolean {
@@ -75,30 +84,57 @@ function looksLikeNetworkError(error: unknown): boolean {
 }
 
 /**
+ * True when the failure is a server-side rate limit (Postgres trigger or
+ * server function). Callers keep the message in the outbox instead of
+ * discarding it.
+ */
+export function isRateLimited(error: unknown): boolean {
+  const text = raw(error);
+  return /RATE_LIMITED/.test(text) || /\b429\b/.test(text);
+}
+
+/** Seconds to wait before retrying a rate-limited action (default 60). */
+export function rateLimitDelay(error: unknown): number {
+  const match = /RATE_LIMITED:(\d+)/.exec(raw(error));
+  const seconds = match?.[1] ? Number(match[1]) : NaN;
+  return Number.isFinite(seconds) && seconds > 0 ? Math.min(seconds, 900) : 60;
+}
+
+/** User-facing sentence for a rate-limited action. */
+export function rateLimitMessage(error: unknown): string {
+  const seconds = rateLimitDelay(error);
+  return seconds <= 90
+    ? say("error.rateLimitShort")
+    : say("error.rateLimitMinutes", { minutes: Math.ceil(seconds / 60) });
+}
+
+/**
  * Single entry point used by the UI: logs the technical detail and returns a
  * user-safe French sentence for the given domain.
  */
 export function handleError(domain: ErrorDomain, error: unknown): string {
   logBackendError(domain, error);
-  if (looksLikeNetworkError(error)) return DOMAIN_MESSAGES.NETWORK_ERROR;
+  if (isRateLimited(error)) return rateLimitMessage(error);
+  if (looksLikeNetworkError(error)) return say("error.network");
 
   const text = raw(error).toLowerCase();
   if (domain === "QR_ERROR") {
-    if (text.includes("expir")) return "Ce QR code a expiré. Générez-en un nouveau.";
-    if (text.includes("déjà") || text.includes("used")) return "Ce QR code a déjà été utilisé.";
-    return "QR code invalide.";
+    if (text.includes("expir")) return say("error.qrExpired");
+    if (text.includes("déjà") || text.includes("used")) return say("error.qrUsed");
+    return say("error.qrInvalid");
   }
   if (domain === "TRANSLATION_ERROR") {
     if (text.includes("crédits") || text.includes("402")) {
-      return "Crédits de traduction épuisés.";
+      return say("error.translationCredits");
     }
     if (text.includes("429") || text.includes("trop")) {
-      return "Trop de traductions d'un coup. Réessayez dans un instant.";
+      return say("error.translationBurst");
     }
   }
-  if (isRlsDenied(error)) return "Vous n'êtes pas autorisé à effectuer cette action.";
-  return DOMAIN_MESSAGES[domain];
+  if (isRlsDenied(error)) return say("error.notAllowed");
+  return say(DOMAIN_KEYS[domain]);
 }
+
 
 /** French message for a Supabase phone-auth (send OTP) failure. */
 export function phoneSendMessage(error: unknown): string {
@@ -108,29 +144,29 @@ export function phoneSendMessage(error: unknown): string {
     text.includes("provider is not enabled") ||
     text.includes("phone_provider_disabled")
   ) {
-    return "L'envoi par SMS n'est pas encore configuré.";
+    return say("error.smsNotConfigured");
   }
   if (text.includes("invalid phone") || text.includes("phone number") || text.includes("invalid format")) {
-    return "Vérifiez votre numéro de téléphone.";
+    return say("error.checkPhone");
   }
   if (text.includes("rate limit") || text.includes("too many") || text.includes("security purposes")) {
-    return "Trop de tentatives. Réessayez dans quelques minutes.";
+    return say("error.tooManyAttempts");
   }
   if (text.includes("signups not allowed") || text.includes("signup is disabled")) {
-    return "Les inscriptions par SMS sont désactivées.";
+    return say("error.smsSignupDisabled");
   }
-  return "Envoi impossible pour le moment. Réessayez.";
+  return say("error.sendFailed");
 }
 
 /** French message for a Supabase OTP verification failure. */
 export function phoneVerifyMessage(error: unknown): string {
   const text = raw(error).toLowerCase();
-  if (text.includes("expired")) return "Ce code a expiré. Demandez-en un nouveau.";
+  if (text.includes("expired")) return say("error.codeExpired");
   if (text.includes("rate limit") || text.includes("too many")) {
-    return "Trop de tentatives. Réessayez dans quelques minutes.";
+    return say("error.tooManyAttempts");
   }
-  if (text.includes("invalid") || text.includes("token")) return "Le code saisi est incorrect.";
-  return "Vérification impossible. Réessayez.";
+  if (text.includes("invalid") || text.includes("token")) return say("error.codeInvalid");
+  return say("error.verifyFailed");
 }
 
 /** True when the error is a unique-constraint violation. */
@@ -147,7 +183,7 @@ export function isRlsDenied(error: unknown): boolean {
 
 /** French message for friend-request mutations. */
 export function friendRequestMessage(error: unknown): string {
-  if (isDuplicate(error)) return "Une demande existe déjà avec cette personne.";
-  if (isRlsDenied(error)) return "Vous n'êtes pas autorisé à effectuer cette action.";
-  return "Réessayez dans un instant.";
+  if (isDuplicate(error)) return say("error.friendRequestDuplicate");
+  if (isRlsDenied(error)) return say("error.notAllowed");
+  return say("error.retrySoon");
 }

@@ -10,3 +10,12 @@ export const deleteMyAccount = createServerFn({ method: "POST" })
     return input;
   })
   .handler(async ({ context }) => deleteAccount(context.supabase, context.userId));
+
+/** RGPD: full JSON export of everything stored about the signed-in account. */
+export const exportMyData = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { exportAccountData } = await import("./account-export.server");
+    return exportAccountData(context.supabase, context.userId);
+  });
+

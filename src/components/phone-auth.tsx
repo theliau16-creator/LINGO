@@ -5,11 +5,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { COUNTRIES, toE164 } from "@/lib/countries";
 import { logBackendError, phoneSendMessage, phoneVerifyMessage } from "@/lib/backend-errors";
 import { haptic } from "@/lib/chat-theme";
+import { useT } from "@/lib/i18n";
 
 
 const RESEND_DELAY = 60;
 
 export function PhoneAuth({ onBack, onSuccess }: { onBack: () => void; onSuccess: () => void }) {
+  const { t } = useT();
   const [step, setStep] = useState<"phone" | "otp">("phone");
   const [country, setCountry] = useState(COUNTRIES[0]!.code);
   const [local, setLocal] = useState("");
@@ -32,7 +34,7 @@ export function PhoneAuth({ onBack, onSuccess }: { onBack: () => void; onSuccess
 
   async function sendCode(resend = false) {
     if (!phoneValid) {
-      toast.error("Numéro invalide", { description: "Vérifiez votre numéro de téléphone." });
+      toast.error(t("auth.phone.invalidNumberTitle"), { description: t("auth.phone.invalidNumberDesc") });
       return;
     }
     setLoading(true);
@@ -40,15 +42,15 @@ export function PhoneAuth({ onBack, onSuccess }: { onBack: () => void; onSuccess
     setLoading(false);
     if (error) {
       logBackendError("PHONE_AUTH_ERROR", error);
-      toast.error("Envoi impossible", { description: phoneSendMessage(error) });
+      toast.error(t("auth.phone.sendFailedTitle"), { description: phoneSendMessage(error) });
       return;
     }
     haptic();
     setStep("otp");
     setCode("");
     setCountdown(RESEND_DELAY);
-    toast.success(resend ? "Nouveau code envoyé" : "Code envoyé", {
-      description: `SMS envoyé au ${phone}`,
+    toast.success(resend ? t("auth.phone.newCodeSent") : t("auth.phone.codeSent"), {
+      description: t("auth.phone.smsSentTo", { phone }),
     });
   }
 
@@ -60,7 +62,7 @@ export function PhoneAuth({ onBack, onSuccess }: { onBack: () => void; onSuccess
       logBackendError("PHONE_OTP_ERROR", error);
       haptic();
       setCode("");
-      toast.error("Code invalide", { description: phoneVerifyMessage(error) });
+      toast.error(t("auth.phone.invalidCodeTitle"), { description: phoneVerifyMessage(error) });
       return;
     }
     onSuccess();
@@ -79,9 +81,9 @@ export function PhoneAuth({ onBack, onSuccess }: { onBack: () => void; onSuccess
 
       {step === "phone" ? (
         <div className="mt-8">
-          <h2 className="text-3xl font-bold tracking-tight">Votre numéro</h2>
+          <h2 className="text-3xl font-bold tracking-tight">{t("auth.phone.yourNumber")}</h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            On vous envoie un code à 6 chiffres par SMS.
+            {t("auth.phone.subtitle")}
           </p>
 
           <div className="glass mt-8 flex items-center gap-2 rounded-3xl px-4 py-3">
@@ -89,7 +91,7 @@ export function PhoneAuth({ onBack, onSuccess }: { onBack: () => void; onSuccess
               value={country}
               onChange={(event) => setCountry(event.target.value)}
               className="max-w-[7.5rem] bg-transparent text-[15px] outline-none"
-              aria-label="Pays"
+              aria-label={t("auth.phone.countryLabel")}
             >
               {COUNTRIES.map((item) => (
                 <option key={item.code} value={item.code} className="bg-background">
@@ -104,7 +106,7 @@ export function PhoneAuth({ onBack, onSuccess }: { onBack: () => void; onSuccess
               autoComplete="tel"
               value={local}
               onChange={(event) => setLocal(event.target.value)}
-              placeholder="6 12 34 56 78"
+              placeholder={t("auth.phone.numberPlaceholder")}
               className="w-full bg-transparent text-[15px] outline-none placeholder:text-muted-foreground/60"
             />
           </div>
@@ -116,14 +118,14 @@ export function PhoneAuth({ onBack, onSuccess }: { onBack: () => void; onSuccess
             className="bg-brand shadow-glow mt-4 flex h-14 w-full items-center justify-center gap-2 rounded-3xl text-base font-semibold text-primary-foreground transition-transform duration-300 active:scale-[0.97] disabled:opacity-50"
           >
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Phone className="h-4 w-4" />}
-            Recevoir le code
+            {t("auth.phone.receiveCode")}
           </button>
         </div>
       ) : (
         <div className="mt-8">
-          <h2 className="text-3xl font-bold tracking-tight">Code de vérification</h2>
+          <h2 className="text-3xl font-bold tracking-tight">{t("auth.phone.verificationCodeTitle")}</h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            Saisissez le code envoyé au <span className="text-foreground">{phone}</span>.
+            {t("auth.phone.enterCodeSentTo")} <span className="text-foreground">{phone}</span>.
           </p>
 
           <OtpInput
@@ -142,7 +144,7 @@ export function PhoneAuth({ onBack, onSuccess }: { onBack: () => void; onSuccess
             className="bg-brand shadow-glow mt-6 flex h-14 w-full items-center justify-center gap-2 rounded-3xl text-base font-semibold text-primary-foreground transition-transform duration-300 active:scale-[0.97] disabled:opacity-50"
           >
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-            Vérifier
+            {t("auth.phone.verify")}
           </button>
 
           <div className="mt-5 flex items-center justify-between text-sm">
@@ -151,7 +153,7 @@ export function PhoneAuth({ onBack, onSuccess }: { onBack: () => void; onSuccess
               onClick={() => setStep("phone")}
               className="text-muted-foreground"
             >
-              Modifier le numéro
+              {t("auth.phone.editNumber")}
             </button>
             <button
               type="button"
@@ -159,7 +161,7 @@ export function PhoneAuth({ onBack, onSuccess }: { onBack: () => void; onSuccess
               onClick={() => void sendCode(true)}
               className="font-semibold text-foreground disabled:text-muted-foreground"
             >
-              {countdown > 0 ? `Renvoyer (${countdown}s)` : "Renvoyer le code"}
+              {countdown > 0 ? t("auth.phone.resendWithCountdown", { seconds: countdown }) : t("auth.phone.resend")}
             </button>
           </div>
         </div>
@@ -177,6 +179,7 @@ function OtpInput({
   onChange: (value: string) => void;
   disabled?: boolean;
 }) {
+  const { t } = useT();
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -197,7 +200,7 @@ function OtpInput({
         inputMode="numeric"
         autoComplete="one-time-code"
         maxLength={6}
-        aria-label="Code à 6 chiffres"
+        aria-label={t("auth.phone.codeInputLabel")}
         className="absolute inset-0 h-full w-full opacity-0"
       />
       <div className="flex justify-between gap-2">

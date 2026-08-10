@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { Sparkles } from "lucide-react";
+import { useT } from "@/lib/i18n";
 
 export function PremiumUpsell({
   title,
@@ -8,6 +9,7 @@ export function PremiumUpsell({
   title: string;
   description: string;
 }) {
+  const { t } = useT();
   return (
     <div className="glass rounded-3xl p-5">
       <span className="bg-brand mb-3 flex h-10 w-10 items-center justify-center rounded-2xl text-primary-foreground">
@@ -19,7 +21,7 @@ export function PremiumUpsell({
         to="/premium"
         className="bg-brand mt-4 flex h-12 items-center justify-center rounded-3xl text-sm font-semibold text-primary-foreground active:scale-[0.98]"
       >
-        Découvrir Lingo Premium
+        {t("billing.upsellDefaultCta")}
       </Link>
     </div>
   );

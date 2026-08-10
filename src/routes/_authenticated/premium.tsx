@@ -7,6 +7,7 @@ import { PaymentTestModeBanner } from "@/components/payment-test-mode-banner";
 import { StripeEmbeddedCheckout } from "@/components/stripe-embedded-checkout";
 import { useCurrentUser } from "@/hooks/useAuth";
 import { useSubscription } from "@/hooks/useSubscription";
+import { useT } from "@/lib/i18n";
 import { isPaymentsConfigured, PREMIUM_PRICES } from "@/lib/stripe";
 
 export const Route = createFileRoute("/_authenticated/premium")({
@@ -16,12 +17,12 @@ export const Route = createFileRoute("/_authenticated/premium")({
       {
         name: "description",
         content:
-          "Passez à Lingo Premium : traductions illimitées, toutes les langues, thèmes de chat et Playground avancé.",
+          "Passez à Lingo Premium : traductions illimitées, toutes les langues, thèmes de chat et réglages avancés.",
       },
       { property: "og:title", content: "Lingo Premium — traductions illimitées" },
       {
         property: "og:description",
-        content: "Traductions illimitées, toutes les langues, thèmes premium et Playground avancé.",
+        content: "Traductions illimitées, toutes les langues, thèmes premium et réglages avancés.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -30,36 +31,37 @@ export const Route = createFileRoute("/_authenticated/premium")({
   component: PremiumPage,
 });
 
-const FEATURES = [
-  "Traductions illimitées, sans quota mensuel",
-  "Toutes les langues disponibles",
-  "Thèmes de chat, couleurs de bulles et arrière-plans",
-  "Translation Playground et réglages avancés",
-];
-
-const PLANS = [
-  {
-    id: PREMIUM_PRICES.monthly,
-    label: "Mensuel",
-    price: "10,00 €",
-    period: "par mois",
-    note: "Sans engagement, annulable à tout moment.",
-  },
-  {
-    id: PREMIUM_PRICES.yearly,
-    label: "Annuel",
-    price: "83,88 €",
-    period: "par an — soit 6,99 € / mois",
-    note: "Économisez 30 % par rapport au mensuel.",
-  },
-] as const;
-
 function PremiumPage() {
+  const { t } = useT();
   const { data: user } = useCurrentUser();
   const subscription = useSubscription();
   const [selected, setSelected] = useState<string>(PREMIUM_PRICES.yearly);
   const [checkout, setCheckout] = useState<string | null>(null);
   const configured = isPaymentsConfigured();
+
+  const FEATURES = [
+    t("billing.featureUnlimited"),
+    t("billing.featureAllLanguages"),
+    t("billing.featureThemes"),
+    t("billing.featureAdvanced"),
+  ];
+
+  const PLANS = [
+    {
+      id: PREMIUM_PRICES.monthly,
+      label: t("billing.planMonthlyLabel"),
+      price: "10,00 €",
+      period: t("billing.planMonthlyPeriod"),
+      note: t("billing.planMonthlyNote"),
+    },
+    {
+      id: PREMIUM_PRICES.yearly,
+      label: t("billing.planYearlyLabel"),
+      price: "83,88 €",
+      period: t("billing.planYearlyPeriod"),
+      note: t("billing.planYearlyNote"),
+    },
+  ] as const;
 
   const emailQuery = useQuery({
     queryKey: ["auth", "email", user?.id],
@@ -69,7 +71,7 @@ function PremiumPage() {
 
   if (checkout) {
     return (
-      <AppShell title="Paiement" subtitle="Sécurisé par Stripe">
+      <AppShell title={t("billing.paymentTitle")} subtitle={t("billing.paymentSubtitle")}>
         <PaymentTestModeBanner />
         <div className="glass mt-3 overflow-hidden rounded-3xl p-2">
           <StripeEmbeddedCheckout
@@ -84,27 +86,25 @@ function PremiumPage() {
           onClick={() => setCheckout(null)}
           className="mt-3 w-full rounded-3xl py-3 text-sm font-semibold text-muted-foreground"
         >
-          Retour aux offres
+          {t("billing.backToOffers")}
         </button>
       </AppShell>
     );
   }
 
   return (
-    <AppShell title="Lingo Premium" subtitle="Parlez toutes les langues, sans limite">
+    <AppShell title={t("billing.premiumTitle")} subtitle={t("billing.premiumSubtitle")}>
       <PaymentTestModeBanner />
 
       {subscription.isPremium ? (
         <div className="glass mt-3 rounded-3xl p-5">
-          <p className="font-semibold">Vous êtes déjà Premium 🎉</p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Gérez votre offre, vos factures et votre annulation depuis l'écran abonnement.
-          </p>
+          <p className="font-semibold">{t("billing.alreadyPremiumTitle")}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{t("billing.alreadyPremiumDesc")}</p>
           <Link
             to="/subscription"
             className="bg-brand mt-4 flex h-12 items-center justify-center rounded-3xl text-sm font-semibold text-primary-foreground active:scale-[0.98]"
           >
-            Gérer mon abonnement
+            {t("billing.manageSubscription")}
           </Link>
         </div>
       ) : (
@@ -125,7 +125,7 @@ function PremiumPage() {
 
           <section className="mt-6 space-y-2">
             <h2 className="mb-2 px-1 text-[11px] font-semibold tracking-widest text-muted-foreground uppercase">
-              Choisissez votre formule
+              {t("billing.choosePlan")}
             </h2>
             {PLANS.map((plan) => {
               const active = selected === plan.id;
@@ -160,12 +160,14 @@ function PremiumPage() {
             {subscription.isLoading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
-              "Passer à Premium"
+              t("billing.upgradeToPremium")
             )}
           </button>
           <p className="mt-3 px-1 text-center text-[11px] text-muted-foreground">
-            Annulable à tout moment. L'accès reste actif jusqu'à la fin de la période payée.
+            {t("billing.paymentMethodsNote")}
           </p>
+
+
         </>
       )}
     </AppShell>

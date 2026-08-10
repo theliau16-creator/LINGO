@@ -9,6 +9,7 @@ import { useIsAdmin } from "@/hooks/useDeveloperMode";
 import { supabase } from "@/integrations/supabase/client";
 import { haptic } from "@/lib/chat-theme";
 import { adminListAccounts, adminResetQuota } from "@/lib/quota.functions";
+import { useT } from "@/lib/i18n";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({
@@ -45,6 +46,7 @@ function AdminPage() {
   const listAccounts = useServerFn(adminListAccounts);
   const resetQuota = useServerFn(adminResetQuota);
   const [search, setSearch] = useState("");
+  const { t } = useT();
 
   const accountsQuery = useQuery({
     queryKey: ["admin-accounts"],
@@ -69,13 +71,13 @@ function AdminPage() {
   const reset = useMutation({
     mutationFn: async (userId: string) => resetQuota({ data: { userId } }),
     onSuccess: () => {
-      toast.success("Compteur réinitialisé");
+      toast.success(t("social.admin.resetSuccessToast"));
       void queryClient.invalidateQueries({ queryKey: ["admin-accounts"] });
       void queryClient.invalidateQueries({ queryKey: ["translation-quota"] });
     },
     onError: (error) =>
-      toast.error("Réinitialisation impossible", {
-        description: error instanceof Error ? error.message : "Réessayez.",
+      toast.error(t("social.admin.resetFailedTitle"), {
+        description: error instanceof Error ? error.message : t("common.retry"),
       }),
   });
 
@@ -88,7 +90,7 @@ function AdminPage() {
 
   if (checking) {
     return (
-      <AppShell title="Administration">
+      <AppShell title={t("social.admin.title")}>
         <Loader2 className="mx-auto mt-10 h-5 w-5 animate-spin text-muted-foreground" />
       </AppShell>
     );
@@ -96,15 +98,15 @@ function AdminPage() {
 
   if (!isAdmin) {
     return (
-      <AppShell title="Administration" subtitle="Accès restreint">
+      <AppShell title={t("social.admin.title")} subtitle={t("social.admin.restricted")}>
         <div className="glass rounded-3xl p-6 text-center text-sm text-muted-foreground">
-          Cette section est réservée aux administrateurs.
+          {t("social.admin.restrictedBody")}
           <button
             type="button"
             onClick={() => navigate({ to: "/chats" })}
             className="bg-brand mt-4 flex h-11 w-full items-center justify-center rounded-3xl text-sm font-semibold text-primary-foreground"
           >
-            Retour aux discussions
+            {t("social.admin.backToChats")}
           </button>
         </div>
       </AppShell>
@@ -115,11 +117,11 @@ function AdminPage() {
   const premiumCount = (accountsQuery.data ?? []).filter((row) => row.isPremium).length;
 
   return (
-    <AppShell title="Administration" subtitle="Comptes, quotas et diagnostics">
+    <AppShell title={t("social.admin.title")} subtitle={t("social.admin.subtitle")}>
       <section className="mb-5 grid grid-cols-3 gap-2">
-        <Stat label="Comptes" value={(accountsQuery.data ?? []).length.toLocaleString("fr-FR")} />
-        <Stat label="Premium" value={premiumCount.toLocaleString("fr-FR")} />
-        <Stat label="Traductions" value={totalUsed.toLocaleString("fr-FR")} />
+        <Stat label={t("social.admin.accounts")} value={(accountsQuery.data ?? []).length.toLocaleString("fr-FR")} />
+        <Stat label={t("social.admin.premium")} value={premiumCount.toLocaleString("fr-FR")} />
+        <Stat label={t("social.admin.translations")} value={totalUsed.toLocaleString("fr-FR")} />
       </section>
 
       <div className="glass mb-4 flex items-center gap-2 rounded-3xl px-4 py-3">
@@ -127,7 +129,7 @@ function AdminPage() {
         <input
           value={search}
           onChange={(event) => setSearch(event.target.value)}
-          placeholder="Rechercher un utilisateur"
+          placeholder={t("social.admin.searchPlaceholder")}
           className="w-full bg-transparent text-[15px] outline-none placeholder:text-muted-foreground/70"
         />
       </div>
@@ -149,7 +151,7 @@ function AdminPage() {
               </p>
               <p className="text-xs text-muted-foreground">
                 {account.used.toLocaleString("fr-FR")} /{" "}
-                {account.limit ? account.limit.toLocaleString("fr-FR") : "∞"} traductions
+                {account.limit ? account.limit.toLocaleString("fr-FR") : "∞"} {t("social.admin.translationsSuffix")}
               </p>
             </div>
             <button
@@ -161,7 +163,7 @@ function AdminPage() {
               }}
               className="glass flex items-center gap-1.5 rounded-2xl px-3 py-2 text-xs font-semibold text-muted-foreground active:scale-95 disabled:opacity-50"
             >
-              <RotateCcw className="h-3.5 w-3.5" /> Reset
+              <RotateCcw className="h-3.5 w-3.5" /> {t("social.admin.reset")}
             </button>
           </div>
         ))}
@@ -169,11 +171,11 @@ function AdminPage() {
 
       <section>
         <h2 className="mb-2 flex items-center gap-1.5 px-1 text-[11px] font-semibold tracking-widest text-muted-foreground uppercase">
-          <Bug className="h-3.5 w-3.5" /> Dernières traductions
+          <Bug className="h-3.5 w-3.5" /> {t("social.admin.lastTranslations")}
         </h2>
         <div className="glass space-y-2 rounded-3xl p-4">
           {(logsQuery.data ?? []).length === 0 ? (
-            <p className="text-xs text-muted-foreground">Aucune traduction enregistrée.</p>
+            <p className="text-xs text-muted-foreground">{t("social.admin.noTranslations")}</p>
           ) : (
             (logsQuery.data ?? []).map((log) => (
               <pre

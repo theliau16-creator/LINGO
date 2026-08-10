@@ -4,14 +4,13 @@
  * Business rules:
  * - free plan: 1 000 real translations (cache hits are free),
  * - premium: unlimited,
- * - the counter is server-side only; the client can read it but never write it.
+ * - the counter is server-side only; the client can read it but never write it,
+ * - the counter is incremented through an atomic SQL function so two concurrent
+ *   translations can never overwrite each other's increment.
  */
 
 export const FREE_TRANSLATION_LIMIT = 1000;
 export const QUOTA_REACHED = "TRANSLATION_QUOTA_REACHED";
-
-const PREMIUM_PRICE_IDS = ["lingo_premium_monthly", "lingo_premium_yearly"];
-const PREMIUM_STATUSES = ["active", "trialing", "past_due", "canceled"];
 
 export type QuotaState = {
   used: number;
@@ -25,22 +24,20 @@ async function admin() {
   return supabaseAdmin;
 }
 
-/** Premium = an active (or still-paid) subscription on a premium price. */
+/**
+ * Single source of truth for premium access (shared by quota, personalisation,
+ * admin and UI). The rules live in the `is_premium_user` SQL function:
+ * `active`/`trialing` are premium, `canceled` stays premium until the paid
+ * period ends, `past_due` keeps a bounded 7-day grace period.
+ */
 export async function isPremiumUser(userId: string): Promise<boolean> {
   const supabaseAdmin = await admin();
-  const { data } = await supabaseAdmin
-    .from("subscriptions")
-    .select("status, price_id, current_period_end")
-    .eq("user_id", userId)
-    .order("created_at", { ascending: false })
-    .limit(5);
-
-  return (data ?? []).some((row) => {
-    if (!PREMIUM_PRICE_IDS.includes(row.price_id)) return false;
-    if (!PREMIUM_STATUSES.includes(row.status)) return false;
-    if (!row.current_period_end) return true;
-    return new Date(row.current_period_end).getTime() > Date.now();
-  });
+  const { data, error } = await supabaseAdmin.rpc("is_premium_user", { _user_id: userId });
+  if (error) {
+    console.error("[QUOTA_PREMIUM_CHECK]", error.message);
+    return false;
+  }
+  return data === true;
 }
 
 /** Current quota state for one user. */
@@ -69,19 +66,19 @@ export async function assertQuota(userId: string | null | undefined): Promise<Qu
   return state;
 }
 
-/** Increments the counter after a real (non-cached) translation. */
+/**
+ * Increments the counter after a real (non-cached) translation.
+ * Atomic: `consume_translation_quota` does the read + write in one statement,
+ * so concurrent translations cannot lose an increment.
+ */
 export async function consumeQuota(userId: string | null | undefined, amount = 1): Promise<void> {
   if (!userId || amount <= 0) return;
   const supabaseAdmin = await admin();
-  const { data } = await supabaseAdmin
-    .from("translation_usage")
-    .select("used")
-    .eq("user_id", userId)
-    .maybeSingle();
-
-  await supabaseAdmin
-    .from("translation_usage")
-    .upsert({ user_id: userId, used: (data?.used ?? 0) + amount }, { onConflict: "user_id" });
+  const { error } = await supabaseAdmin.rpc("consume_translation_quota", {
+    _user_id: userId,
+    _amount: amount,
+  });
+  if (error) console.error("[QUOTA_CONSUME]", error.message);
 }
 
 /** Admin-only: resets a user's counter to zero. */

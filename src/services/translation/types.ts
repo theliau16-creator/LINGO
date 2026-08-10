@@ -38,12 +38,25 @@ export type TranslationRequest = {
    * Never send a whole history: cost grows linearly with it.
    */
   context?: TranslationContextMessage[];
+  /**
+   * Per-relation glossary (nicknames, private jokes, corrected expressions).
+   * Scoped to a single conversation — never shared across conversations.
+   */
+  glossary?: GlossaryEntry[];
 };
+
+/** One remembered term of a conversation's translation memory. */
+export type GlossaryEntry = { term: string; translation: string };
 
 export type TranslationResult = {
   text: string;
   engine: TranslationEngineId;
+  /** 0 → 1. Undefined when the engine cannot express a confidence. */
+  confidence?: number;
+  /** Second plausible reading when the source is genuinely ambiguous. */
+  alternative?: string | null;
 };
+
 
 export interface TranslationProvider {
   readonly id: TranslationEngineId;

@@ -16,13 +16,9 @@ export default defineTool({
     if (!term) return { content: [{ type: "text", text: "Empty query" }], isError: true };
 
     const supabase = supabaseForUser(ctx);
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("id, username, primary_language, country")
-      .ilike("username", `%${term}%`)
-      .neq("id", ctx.getUserId()!)
-      .limit(20);
+    const { data, error } = await supabase.rpc("search_profiles", { _query: term });
     if (error) return { content: [{ type: "text", text: error.message }], isError: true };
+
 
     return {
       content: [{ type: "text", text: JSON.stringify(data ?? []) }],

@@ -193,3 +193,20 @@
 @utility animate-dot {
   animation: lingo-pulse 1.1s ease-in-out infinite;
 }
+
+/* ---------------------------------------------------------------------------
+   RTL (Arabic, Hebrew)
+   The <html dir> attribute is set by the locale provider. Chat bubbles keep
+   their own alignment (outgoing right / incoming left is mirrored by the
+   layout), while message content follows the direction of its own text.
+--------------------------------------------------------------------------- */
+[dir="rtl"] .rtl-flip {
+  transform: scaleX(-1);
+}
+
+/* User content must not inherit the UI direction: an Arabic UI still renders a
+   French message left-to-right, and vice versa. */
+.message-content {
+  unicode-bidi: plaintext;
+  text-align: start;
+}

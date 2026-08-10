@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Ban, Bell, Check, CheckCheck, Eye, FlaskConical, LogOut, ShieldCheck, Sparkles } from "lucide-react";
+import { Ban, Bell, Check, CheckCheck, Eye, LogOut, ShieldCheck, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
@@ -9,7 +9,7 @@ import { useIsAdmin } from "@/hooks/useDeveloperMode";
 import { QuotaCard } from "@/components/quota-card";
 import { supabase } from "@/integrations/supabase/client";
 import { haptic } from "@/lib/chat-theme";
-import { useT } from "@/lib/i18n";
+import { useLocale, useT } from "@/lib/i18n";
 import { LANGUAGES } from "@/lib/languages";
 import { NotificationService } from "@/services/notifications";
 
@@ -35,6 +35,7 @@ function SettingsPage() {
   const { data: profile } = useProfile();
   const queryClient = useQueryClient();
   const { t } = useT();
+  const { setLocale } = useLocale();
 
   const navigate = useNavigate();
   const { data: isAdmin } = useIsAdmin();
@@ -85,11 +86,11 @@ function SettingsPage() {
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Compte débloqué");
+      toast.success(t("social.settings.unblockedToast"));
       void queryClient.invalidateQueries({ queryKey: ["blocked-users"] });
       void queryClient.invalidateQueries({ queryKey: ["contact-state"] });
     },
-    onError: () => toast.error("Action impossible"),
+    onError: () => toast.error(t("social.settings.actionFailedToast")),
   });
 
   const update = useMutation({
@@ -132,16 +133,19 @@ function SettingsPage() {
         .eq("id", user!.id);
       if (error) throw error;
     },
-    onSuccess: async () => {
+    onSuccess: async (_result, code) => {
       // La langue pilote l'affichage des traductions partout : on rafraîchit
       // le profil, les conversations et les messages déjà chargés.
       setSelectedLanguage(null);
+      // The language selector is the single source of truth for the whole app
+      // language: switch the interface instantly, without a reload.
+      setLocale(code);
       await queryClient.invalidateQueries({ queryKey: ["profile"] });
       await queryClient.invalidateQueries({ queryKey: ["conversations"] });
       await queryClient.invalidateQueries({ queryKey: ["messages"] });
       await queryClient.invalidateQueries({ queryKey: ["conversation-peer"] });
-      toast.success(t("settings.languageSaved"), {
-        description: t("settings.languageSavedHint"),
+      toast.success(t("social.settings.languageChangedToast"), {
+        description: t("social.settings.languageChangedHint"),
       });
     },
     onError: (error) =>
@@ -163,7 +167,7 @@ function SettingsPage() {
           <div className="flex-1">
             <p className="font-semibold">Lingo AI</p>
             <p className="text-xs text-muted-foreground">
-              Traduction contextuelle incluse, sans configuration.
+              {t("social.settings.engineDesc")}
             </p>
           </div>
           <span className="text-[11px] font-semibold text-primary">{t("settings.active")}</span>
@@ -242,7 +246,7 @@ function SettingsPage() {
 
       <section className="mb-6">
         <h2 className="mb-2 px-1 text-[11px] font-semibold tracking-widest text-muted-foreground uppercase">
-          Confidentialité
+          {t("social.settings.privacy")}
         </h2>
 
         <div className="glass mb-2 flex items-center justify-between rounded-3xl p-4">
@@ -251,16 +255,16 @@ function SettingsPage() {
               <Eye className="h-4 w-4" />
             </span>
             <div>
-              <p className="font-semibold">Statut en ligne</p>
+              <p className="font-semibold">{t("social.settings.onlineStatus")}</p>
               <p className="text-xs text-muted-foreground">
-                Vos contacts voient quand vous êtes actif.
+                {t("social.settings.onlineStatusHint")}
               </p>
             </div>
           </div>
           <Switch
             checked={showOnline}
             onChange={(value) => update.mutate({ show_online_status: value })}
-            label="Statut en ligne"
+            label={t("social.settings.onlineStatus")}
           />
         </div>
 
@@ -270,16 +274,16 @@ function SettingsPage() {
               <CheckCheck className="h-4 w-4" />
             </span>
             <div>
-              <p className="font-semibold">Accusés de lecture</p>
+              <p className="font-semibold">{t("social.settings.readReceipts")}</p>
               <p className="text-xs text-muted-foreground">
-                Désactivé, vous ne voyez plus ceux des autres.
+                {t("social.settings.readReceiptsHint")}
               </p>
             </div>
           </div>
           <Switch
             checked={readReceipts}
             onChange={(value) => update.mutate({ read_receipts_enabled: value })}
-            label="Accusés de lecture"
+            label={t("social.settings.readReceipts")}
           />
         </div>
 
@@ -289,14 +293,14 @@ function SettingsPage() {
             haptic();
             const granted = await NotificationService.request();
             if (granted) {
-              toast.success("Notifications activées");
+              toast.success(t("social.settings.notificationsEnabledTitle"));
               void NotificationService.notify({
                 title: "Lingo",
-                body: "Les notifications sont prêtes.",
+                body: t("social.settings.notificationsReadyBody"),
               });
             } else {
-              toast.error("Notifications refusées", {
-                description: "Autorisez-les dans les réglages de votre navigateur.",
+              toast.error(t("social.settings.notificationsDeniedTitle"), {
+                description: t("social.settings.notificationsDeniedDesc"),
               });
             }
           }}
@@ -306,9 +310,9 @@ function SettingsPage() {
             <Bell className="h-4 w-4" />
           </span>
           <span className="flex-1">
-            <span className="block font-semibold">Notifications</span>
+            <span className="block font-semibold">{t("social.settings.notifications")}</span>
             <span className="block text-xs text-muted-foreground">
-              Être alerté des nouveaux messages.
+              {t("social.settings.notificationsHint")}
             </span>
           </span>
         </button>
@@ -316,12 +320,12 @@ function SettingsPage() {
 
       <section className="mb-6">
         <h2 className="mb-2 px-1 text-[11px] font-semibold tracking-widest text-muted-foreground uppercase">
-          Comptes bloqués
+          {t("social.settings.blockedAccounts")}
         </h2>
         <div className="glass space-y-2 rounded-3xl p-4">
           {(blockedQuery.data ?? []).length === 0 ? (
             <p className="text-xs text-muted-foreground">
-              Vous n'avez bloqué personne. Les comptes bloqués ne peuvent plus vous écrire.
+              {t("social.settings.blockedAccountsEmpty")}
             </p>
           ) : (
             (blockedQuery.data ?? []).map((row) => (
@@ -339,7 +343,7 @@ function SettingsPage() {
                   }}
                   className="rounded-2xl bg-secondary/60 px-3 py-2 text-xs font-semibold text-muted-foreground active:scale-95 disabled:opacity-50"
                 >
-                  Débloquer
+                  {t("social.settings.unblock")}
                 </button>
               </div>
             ))
@@ -352,20 +356,6 @@ function SettingsPage() {
           {t("settings.dev")}
         </h2>
 
-        <Link
-          to="/playground"
-          className="glass mb-2 flex items-center gap-3 rounded-3xl p-4 active:scale-[0.98]"
-        >
-          <span className="bg-brand flex h-10 w-10 items-center justify-center rounded-2xl text-primary-foreground">
-            <FlaskConical className="h-4 w-4" />
-          </span>
-          <span className="flex-1">
-            <span className="block font-semibold">{t("settings.playground")}</span>
-            <span className="block text-xs text-muted-foreground">
-              {t("settings.playgroundHint")}
-            </span>
-          </span>
-        </Link>
 
         {isAdmin ? (
           <Link
@@ -376,9 +366,9 @@ function SettingsPage() {
               <ShieldCheck className="h-4 w-4" />
             </span>
             <span className="flex-1">
-              <span className="block font-semibold">Administration</span>
+              <span className="block font-semibold">{t("social.settings.admin")}</span>
               <span className="block text-xs text-muted-foreground">
-                Comptes, quotas et diagnostics de traduction.
+                {t("social.settings.adminHint")}
               </span>
             </span>
           </Link>

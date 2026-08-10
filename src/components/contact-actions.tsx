@@ -14,6 +14,7 @@ import {
   type BackendErrorCode,
 } from "@/lib/backend-errors";
 import { haptic } from "@/lib/chat-theme";
+import { useT } from "@/lib/i18n";
 
 export type ContactState = "self" | "none" | "sent" | "received" | "friends" | "blocked";
 
@@ -88,6 +89,7 @@ function useDirectConversation(otherId: string | null | undefined) {
 
 /** Add / accept / decline / block / mute / delete actions for a contact. */
 export function ContactActions({ profileId }: { profileId: string }) {
+  const { t } = useT();
   const { data: user } = useCurrentUser();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -104,13 +106,13 @@ export function ContactActions({ profileId }: { profileId: string }) {
 
   const fail = (code: BackendErrorCode) => (error: unknown) => {
     logBackendError(code, error);
-    toast.error("Action impossible", { description: friendRequestMessage(error) });
+    toast.error(t("social.contact.actionFailed"), { description: friendRequestMessage(error) });
   };
 
   const add = useMutation({
     mutationFn: async () => {
       if (!user?.id) throw new Error("USER_NOT_AUTHENTICATED");
-      if (user.id === profileId) throw new Error("Impossible de s'ajouter soi-même");
+      if (user.id === profileId) throw new Error(t("social.contact.selfAddError"));
 
       // A previous declined/cancelled row would trip the (sender, receiver)
       // unique constraint, so clear it first (delete policy allows both sides).
@@ -127,12 +129,12 @@ export function ContactActions({ profileId }: { profileId: string }) {
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Demande envoyée");
+      toast.success(t("social.contact.requestSent"));
       refresh();
     },
     onError: (error) => {
       if (isDuplicate(error)) {
-        toast.info("Demande déjà envoyée");
+        toast.info(t("social.contact.requestAlreadySent"));
         refresh();
         return;
       }
@@ -144,7 +146,7 @@ export function ContactActions({ profileId }: { profileId: string }) {
   const answer = useMutation({
     mutationFn: async (accept: boolean) => {
       const requestId = stateQuery.data?.requestId;
-      if (!requestId) throw new Error("Demande introuvable");
+      if (!requestId) throw new Error(t("social.contact.requestNotFound"));
       if (accept) {
         const { error } = await supabase.rpc("accept_friend_request", { _request_id: requestId });
         if (error) throw error;
@@ -183,7 +185,7 @@ export function ContactActions({ profileId }: { profileId: string }) {
   const mute = useMutation({
     mutationFn: async (next: boolean) => {
       const conversationId = conversationQuery.data?.conversationId;
-      if (!conversationId) throw new Error("Aucune conversation à mettre en sourdine");
+      if (!conversationId) throw new Error(t("social.contact.noConversationToMute"));
       const { error } = await supabase
         .from("conversation_participants")
         .update({ muted_at: next ? new Date().toISOString() : null })
@@ -193,7 +195,7 @@ export function ContactActions({ profileId }: { profileId: string }) {
       return next;
     },
     onSuccess: (next) => {
-      toast.success(next ? "Conversation en sourdine" : "Notifications réactivées");
+      toast.success(next ? t("social.contact.muted") : t("social.contact.unmuted"));
       void queryClient.invalidateQueries({ queryKey: ["direct-conversation"] });
     },
     onError: fail("CONVERSATION_ERROR"),
@@ -224,7 +226,7 @@ export function ContactActions({ profileId }: { profileId: string }) {
     },
     onSuccess: () => {
       setConfirmDelete(false);
-      toast.success("Contact supprimé");
+      toast.success(t("social.contact.removed"));
       void queryClient.invalidateQueries({ queryKey: ["conversations"] });
       void queryClient.invalidateQueries({ queryKey: ["direct-conversation"] });
       refresh();
@@ -260,7 +262,7 @@ export function ContactActions({ profileId }: { profileId: string }) {
     <div className="flex items-center gap-2">
       {state === "none" ? (
         <Action
-          label="Ajouter"
+          label={t("social.contact.add")}
           primary
           busy={busy}
           onClick={() => {
@@ -273,21 +275,21 @@ export function ContactActions({ profileId }: { profileId: string }) {
 
       {state === "sent" ? (
         <span className="rounded-2xl bg-secondary/60 px-3 py-2 text-xs font-semibold text-muted-foreground">
-          Demande envoyée
+          {t("social.contact.sentBadge")}
         </span>
       ) : null}
 
       {state === "received" ? (
         <>
           <Action
-            label="Accepter"
+            label={t("social.contact.accept")}
             primary
             busy={busy}
             onClick={() => answer.mutate(true)}
             icon={<Check className="h-4 w-4" />}
           />
           <Action
-            label="Refuser"
+            label={t("social.contact.decline")}
             busy={busy}
             onClick={() => answer.mutate(false)}
             icon={<X className="h-4 w-4" />}
@@ -297,7 +299,7 @@ export function ContactActions({ profileId }: { profileId: string }) {
 
       {state === "friends" ? (
         <Action
-          label="Discuter"
+          label={t("social.contact.chat")}
           primary
           busy={busy}
           onClick={() => openChat.mutate()}
@@ -307,7 +309,7 @@ export function ContactActions({ profileId }: { profileId: string }) {
 
       {hasConversation ? (
         <Action
-          label={muted ? "Réactiver" : "Sourdine"}
+          label={muted ? t("social.contact.reactivate") : t("social.contact.mute")}
           busy={busy}
           onClick={() => {
             haptic();
@@ -318,7 +320,7 @@ export function ContactActions({ profileId }: { profileId: string }) {
       ) : null}
 
       <Action
-        label={state === "blocked" ? "Débloquer" : "Bloquer"}
+        label={state === "blocked" ? t("social.contact.unblock") : t("social.contact.block")}
         busy={busy}
         onClick={() => block.mutate(state !== "blocked")}
         icon={<Ban className="h-4 w-4" />}
@@ -326,7 +328,7 @@ export function ContactActions({ profileId }: { profileId: string }) {
 
       {state === "friends" || hasConversation ? (
         <Action
-          label="Supprimer"
+          label={t("social.contact.remove")}
           busy={busy}
           onClick={() => {
             haptic();
@@ -339,9 +341,9 @@ export function ContactActions({ profileId }: { profileId: string }) {
       {confirmDelete ? (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-background/70 p-4 backdrop-blur-sm">
           <div className="glass-strong animate-rise w-full max-w-sm rounded-3xl p-5">
-            <p className="font-semibold">Supprimer ce contact ?</p>
+            <p className="font-semibold">{t("social.contact.confirmRemoveTitle")}</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              La conversation disparaîtra de votre liste. Cette action est irréversible.
+              {t("social.contact.confirmRemoveBody")}
             </p>
             <div className="mt-4 flex gap-2">
               <button
@@ -349,7 +351,7 @@ export function ContactActions({ profileId }: { profileId: string }) {
                 onClick={() => setConfirmDelete(false)}
                 className="glass h-11 flex-1 rounded-3xl text-sm font-semibold active:scale-[0.98]"
               >
-                Annuler
+                {t("social.contact.cancel")}
               </button>
               <button
                 type="button"
@@ -357,7 +359,7 @@ export function ContactActions({ profileId }: { profileId: string }) {
                 onClick={() => removeContact.mutate()}
                 className="h-11 flex-1 rounded-3xl bg-destructive text-sm font-semibold text-destructive-foreground active:scale-[0.98] disabled:opacity-60"
               >
-                {removeContact.isPending ? "Suppression…" : "Supprimer"}
+                {removeContact.isPending ? t("social.contact.removing") : t("social.contact.remove")}
               </button>
             </div>
           </div>

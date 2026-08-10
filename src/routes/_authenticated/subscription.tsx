@@ -12,6 +12,7 @@ import {
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
 import { createPortalSession, getBillingOverview } from "@/lib/billing.functions";
+import { useT } from "@/lib/i18n";
 import { getStripeEnvironment, isPaymentsConfigured } from "@/lib/stripe";
 
 export const Route = createFileRoute("/_authenticated/subscription")({
@@ -35,43 +36,6 @@ export const Route = createFileRoute("/_authenticated/subscription")({
   component: SubscriptionPage,
 });
 
-const STATUS_LABELS: Record<string, string> = {
-  active: "Actif",
-  trialing: "Période d'essai",
-  past_due: "Paiement en retard",
-  unpaid: "Paiement requis",
-  canceled: "Annulé",
-  incomplete: "Paiement incomplet",
-  incomplete_expired: "Abonnement expiré",
-  paused: "Suspendu",
-};
-
-const STATUS_DOTS: Record<string, string> = {
-  active: "bg-emerald-500",
-  trialing: "bg-sky-500",
-  past_due: "bg-destructive",
-  unpaid: "bg-destructive",
-  canceled: "bg-muted-foreground",
-  incomplete: "bg-amber-500",
-  incomplete_expired: "bg-muted-foreground",
-  paused: "bg-amber-500",
-};
-
-const INVOICE_STATUS_LABELS: Record<string, string> = {
-  paid: "Payée",
-  open: "En attente",
-  draft: "Brouillon",
-  void: "Annulée",
-  uncollectible: "Impayée",
-};
-
-const INTERVALS: Record<string, string> = {
-  month: "mois",
-  year: "an",
-  week: "semaine",
-  day: "jour",
-};
-
 const ACTIVE_STATUSES = ["active", "trialing", "past_due", "unpaid", "incomplete", "paused"];
 
 function formatMoney(amount: number | null, currency: string | null) {
@@ -88,7 +52,45 @@ function formatDate(value: string | null) {
 }
 
 function SubscriptionPage() {
+  const { t } = useT();
   const configured = isPaymentsConfigured();
+
+  const STATUS_LABELS: Record<string, string> = {
+    active: t("billing.statusActive"),
+    trialing: t("billing.statusTrialing"),
+    past_due: t("billing.statusPastDue"),
+    unpaid: t("billing.statusUnpaid"),
+    canceled: t("billing.statusCanceled"),
+    incomplete: t("billing.statusIncomplete"),
+    incomplete_expired: t("billing.statusIncompleteExpired"),
+    paused: t("billing.statusPaused"),
+  };
+
+  const STATUS_DOTS: Record<string, string> = {
+    active: "bg-emerald-500",
+    trialing: "bg-sky-500",
+    past_due: "bg-destructive",
+    unpaid: "bg-destructive",
+    canceled: "bg-muted-foreground",
+    incomplete: "bg-amber-500",
+    incomplete_expired: "bg-muted-foreground",
+    paused: "bg-amber-500",
+  };
+
+  const INVOICE_STATUS_LABELS: Record<string, string> = {
+    paid: t("billing.invoiceStatusPaid"),
+    open: t("billing.invoiceStatusOpen"),
+    draft: t("billing.invoiceStatusDraft"),
+    void: t("billing.invoiceStatusVoid"),
+    uncollectible: t("billing.invoiceStatusUncollectible"),
+  };
+
+  const INTERVALS: Record<string, string> = {
+    month: t("billing.intervalMonth"),
+    year: t("billing.intervalYear"),
+    week: t("billing.intervalWeek"),
+    day: t("billing.intervalDay"),
+  };
 
   const billingQuery = useQuery({
     queryKey: ["billing-overview"],
@@ -110,8 +112,8 @@ function SubscriptionPage() {
     },
     onSuccess: (url) => window.open(url, "_blank", "noopener,noreferrer"),
     onError: (error) =>
-      toast.error("Espace de facturation indisponible", {
-        description: error instanceof Error ? error.message : "Réessayez dans un instant.",
+      toast.error(t("billing.portalErrorTitle"), {
+        description: error instanceof Error ? error.message : t("billing.portalErrorFallback"),
       }),
   });
 
@@ -124,19 +126,17 @@ function SubscriptionPage() {
   const openPortal = () => portal.mutate();
 
   return (
-    <AppShell title="Mon abonnement" subtitle="Votre offre, votre facturation, en un endroit">
+    <AppShell title={t("billing.subscriptionTitle")} subtitle={t("billing.subscriptionSubtitle")}>
       {!configured ? (
         <div className="glass rounded-3xl p-5 text-sm text-muted-foreground">
-          Les paiements ne sont pas encore actifs sur cette version de l'application.
+          {t("billing.paymentsNotConfigured")}
         </div>
       ) : billingQuery.isLoading ? (
         <div className="glass flex items-center justify-center rounded-3xl p-8 text-muted-foreground">
           <Loader2 className="h-5 w-5 animate-spin" />
         </div>
       ) : billingQuery.isError ? (
-        <div className="glass rounded-3xl p-5 text-sm text-destructive">
-          Impossible de charger votre abonnement pour le moment.
-        </div>
+        <div className="glass rounded-3xl p-5 text-sm text-destructive">{t("billing.loadError")}</div>
       ) : (
         <div className="mx-auto max-w-2xl">
           {isPastDue ? (
@@ -144,11 +144,8 @@ function SubscriptionPage() {
               <div className="flex items-start gap-3">
                 <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-destructive" />
                 <div className="text-sm text-destructive">
-                  <p className="font-semibold">Un problème est survenu avec votre paiement.</p>
-                  <p className="mt-1 opacity-90">
-                    Nous n'avons pas pu renouveler votre abonnement. Mettez à jour votre moyen de
-                    paiement pour éviter l'interruption de Lingo Premium.
-                  </p>
+                  <p className="font-semibold">{t("billing.pastDueTitle")}</p>
+                  <p className="mt-1 opacity-90">{t("billing.pastDueDesc")}</p>
                 </div>
               </div>
               <button
@@ -158,14 +155,14 @@ function SubscriptionPage() {
                 className="mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-destructive text-sm font-semibold text-destructive-foreground active:scale-[0.98] disabled:opacity-50"
               >
                 {portal.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                Mettre à jour mon moyen de paiement
+                {t("billing.updatePaymentMethod")}
               </button>
             </div>
           ) : null}
 
           <section className="mb-6">
             <h2 className="mb-2 px-1 text-[11px] font-semibold tracking-widest text-muted-foreground uppercase">
-              Offre en cours
+              {t("billing.currentPlan")}
             </h2>
             <div className="glass rounded-3xl p-5">
               {subscription ? (
@@ -194,16 +191,17 @@ function SubscriptionPage() {
                     <div className="mt-4 flex items-start gap-2 rounded-2xl bg-secondary/60 p-3 text-xs">
                       <CalendarClock className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
                       <span>
-                        <span className="block font-semibold">Annulation programmée</span>
+                        <span className="block font-semibold">{t("billing.cancelScheduled")}</span>
                         <span className="block text-muted-foreground">
-                          Votre accès à Lingo Premium reste disponible jusqu'au{" "}
-                          {formatDate(subscription.current_period_end)}.
+                          {t("billing.accessUntil", {
+                            date: formatDate(subscription.current_period_end),
+                          })}
                         </span>
                       </span>
                     </div>
                   ) : (
                     <p className="mt-4 text-xs text-muted-foreground">
-                      Prochain renouvellement le {formatDate(subscription.current_period_end)}.
+                      {t("billing.nextRenewal", { date: formatDate(subscription.current_period_end) })}
                     </p>
                   )}
 
@@ -218,20 +216,18 @@ function SubscriptionPage() {
                     ) : (
                       <ExternalLink className="h-4 w-4" />
                     )}
-                    Gérer mon abonnement
+                    {t("billing.manageSubscription")}
                   </button>
                 </>
               ) : (
                 <>
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="text-lg font-semibold">Lingo Free</p>
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        Offre gratuite — 1 000 traductions incluses.
-                      </p>
+                      <p className="text-lg font-semibold">{t("billing.freePlanName")}</p>
+                      <p className="mt-1 text-sm text-muted-foreground">{t("billing.freePlanDesc")}</p>
                     </div>
                     <span className="rounded-full bg-secondary px-3 py-1 text-[11px] font-semibold">
-                      Gratuit
+                      {t("billing.free")}
                     </span>
                   </div>
                   <Link
@@ -239,7 +235,7 @@ function SubscriptionPage() {
                     className="bg-brand mt-4 flex h-12 items-center justify-center gap-2 rounded-3xl text-sm font-semibold text-primary-foreground active:scale-[0.98]"
                   >
                     <Sparkles className="h-4 w-4" />
-                    Passer à Premium
+                    {t("billing.upgradeToPremium")}
                   </Link>
                 </>
               )}
@@ -249,13 +245,10 @@ function SubscriptionPage() {
           {subscription ? (
             <section className="mb-6">
               <h2 className="mb-2 px-1 text-[11px] font-semibold tracking-widest text-muted-foreground uppercase">
-                Facturation
+                {t("billing.billingSection")}
               </h2>
               <div className="glass rounded-3xl p-5">
-                <p className="text-sm text-muted-foreground">
-                  Moyen de paiement, changement de formule et annulation sont gérés de manière
-                  sécurisée via Stripe. L'espace de facturation s'ouvre dans un nouvel onglet.
-                </p>
+                <p className="text-sm text-muted-foreground">{t("billing.billingSecureNote")}</p>
                 <button
                   type="button"
                   disabled={portal.isPending}
@@ -267,7 +260,7 @@ function SubscriptionPage() {
                   ) : (
                     <CreditCard className="h-4 w-4" />
                   )}
-                  Gérer la facturation
+                  {t("billing.manageBilling")}
                 </button>
               </div>
             </section>
@@ -275,11 +268,11 @@ function SubscriptionPage() {
 
           <section className="mb-6">
             <h2 className="mb-2 px-1 text-[11px] font-semibold tracking-widest text-muted-foreground uppercase">
-              Factures
+              {t("billing.invoicesSection")}
             </h2>
             {invoices.length === 0 ? (
               <div className="glass rounded-3xl p-5 text-sm text-muted-foreground">
-                Aucune facture pour le moment.
+                {t("billing.noInvoices")}
               </div>
             ) : (
               <div className="space-y-2">
@@ -293,7 +286,7 @@ function SubscriptionPage() {
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-semibold">{formatDate(invoice.created)}</p>
                         <p className="truncate text-xs text-muted-foreground">
-                          {invoice.plan ?? "Abonnement"} ·{" "}
+                          {invoice.plan ?? t("billing.subscriptionFallback")} ·{" "}
                           {formatMoney(invoice.amount_paid, invoice.currency)} ·{" "}
                           {INVOICE_STATUS_LABELS[invoice.status ?? ""] ?? (invoice.status ?? "—")}
                         </p>
@@ -306,10 +299,10 @@ function SubscriptionPage() {
                           className="flex h-10 items-center gap-2 rounded-2xl bg-secondary px-3 text-xs font-semibold active:scale-[0.98]"
                         >
                           <Download className="h-4 w-4" />
-                          PDF
+                          {t("billing.pdf")}
                         </a>
                       ) : (
-                        <span className="text-xs text-muted-foreground">Indisponible</span>
+                        <span className="text-xs text-muted-foreground">{t("billing.unavailable")}</span>
                       )}
                     </div>
                   );

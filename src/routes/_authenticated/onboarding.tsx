@@ -97,7 +97,7 @@ function OnboardingPage() {
               setTouchedLanguage(false);
               setCountry(event.target.value);
             }}
-            aria-label="Pays"
+            aria-label={t("onboarding.countryLabel")}
             className="w-full bg-transparent text-[15px] outline-none"
           >
             {COUNTRIES.map((item) => (

@@ -1,9 +1,11 @@
 import { Link } from "@tanstack/react-router";
 import { Sparkles, Zap } from "lucide-react";
 import { useTranslationQuota } from "@/hooks/useTranslationQuota";
+import { useT } from "@/lib/i18n";
 
 /** Free-plan translation counter with an upgrade CTA when it runs low. */
 export function QuotaCard() {
+  const { t } = useT();
   const { data, isLoading } = useTranslationQuota();
 
   if (isLoading || !data) {
@@ -17,9 +19,9 @@ export function QuotaCard() {
           <Sparkles className="h-4 w-4" />
         </span>
         <div>
-          <p className="font-semibold">Traductions illimitées</p>
+          <p className="font-semibold">{t("billing.quotaUnlimited")}</p>
           <p className="text-xs text-muted-foreground">
-            Lingo Premium actif · {data.used.toLocaleString("fr-FR")} traductions utilisées
+            {t("billing.quotaPremiumActive", { count: data.used.toLocaleString("fr-FR") })}
           </p>
         </div>
       </div>
@@ -38,9 +40,12 @@ export function QuotaCard() {
           <Zap className="h-4 w-4" />
         </span>
         <div className="flex-1">
-          <p className="font-semibold">Traductions incluses</p>
+          <p className="font-semibold">{t("billing.quotaIncluded")}</p>
           <p className="text-xs text-muted-foreground">
-            {data.used.toLocaleString("fr-FR")} / {limit.toLocaleString("fr-FR")} utilisées
+            {t("billing.quotaUsed", {
+              used: data.used.toLocaleString("fr-FR"),
+              limit: limit.toLocaleString("fr-FR"),
+            })}
           </p>
         </div>
         <span
@@ -64,7 +69,7 @@ export function QuotaCard() {
           to="/premium"
           className="bg-brand mt-3 flex h-11 items-center justify-center rounded-3xl text-sm font-semibold text-primary-foreground active:scale-[0.98]"
         >
-          {remaining === 0 ? "Quota atteint — passer en Premium" : "Passer en Premium"}
+          {remaining === 0 ? t("billing.quotaReachedCta") : t("billing.quotaUpgradeCta")}
         </Link>
       ) : null}
     </div>

@@ -1,16 +1,23 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import {
+  AlertTriangle,
   ArrowLeft,
   Check,
   CheckCheck,
   CornerUpLeft,
   Languages,
   Loader2,
+  LogOut,
+
+  BrainCircuit,
   Palette,
+  PencilLine,
+  UserPlus,
   RefreshCw,
   SendHorizonal,
+  Smile,
   Trash2,
   WifiOff,
   X,
@@ -18,7 +25,14 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Avatar } from "@/components/app-shell";
+import { ConversationMemorySheet } from "@/components/conversation-memory-sheet";
+import { InviteSheet } from "@/components/invite-sheet";
+import { LinkPreviewCard } from "@/components/link-preview-card";
+import { MediaComposer } from "@/components/media-composer";
+import { MessageAttachments, type MessageAttachment } from "@/components/message-attachments";
 import { ChatCustomizer } from "@/components/chat-customizer";
+import { CorrectTranslationSheet } from "@/components/correct-translation-sheet";
+import { MessageReactions, ReactionPicker, useReactions } from "@/components/message-reactions";
 import { useCurrentUser, useProfile } from "@/hooks/useAuth";
 import { useBackgroundPhotoUrl, useChatPreferences } from "@/hooks/useChatPreferences";
 import { usePresence } from "@/hooks/usePresence";
@@ -26,9 +40,16 @@ import { useUserSettings } from "@/hooks/useUserSettings";
 import { supabase } from "@/integrations/supabase/client";
 import { handleError } from "@/lib/backend-errors";
 import { backgroundStyle, haptic, readableTextColor } from "@/lib/chat-theme";
-import { backfillConversation, translateMessage } from "@/lib/chat.functions";
+import {
+  backfillConversation,
+  recoverStalledTranslation,
+  translateMessage,
+} from "@/lib/chat.functions";
 import { languageFlag, languageLabel } from "@/lib/languages";
+import { useT } from "@/lib/i18n";
+import { recoverStalledVoice } from "@/lib/media.functions";
 import { dequeueOutbox, enqueueOutbox, listOutbox, type PendingMessage } from "@/lib/outbox";
+
 
 export const Route = createFileRoute("/_authenticated/chat/$conversationId")({
   head: () => ({
@@ -46,15 +67,29 @@ export const Route = createFileRoute("/_authenticated/chat/$conversationId")({
       {handleError("MESSAGE_ERROR", error)}
     </div>
   ),
-  notFoundComponent: () => (
-    <div className="p-8 text-center text-sm text-muted-foreground">Conversation introuvable.</div>
-  ),
+  notFoundComponent: () => {
+    const { t } = useT();
+    return (
+      <div className="p-8 text-center text-sm text-muted-foreground">{t("chat.notFound")}</div>
+    );
+  },
   component: ChatPage,
 });
 
 const PAGE_SIZE = 40;
 
+/** A translation still pending after this delay is considered abandoned. */
+const STALE_TRANSLATION_MS = 60_000;
+
 type Receipt = { user_id: string; delivered_at: string | null; read_at: string | null };
+
+type Translation = {
+  language: string;
+  translated_text: string;
+  confidence_score: number | null;
+  alternative_translation?: string | null;
+  corrected_by_user: boolean | null;
+};
 
 type MessageRow = {
   id: string;
@@ -67,14 +102,21 @@ type MessageRow = {
   reply_to_message_id: string | null;
   deleted_at: string | null;
   deleted_for: string[] | null;
-  message_translations: { language: string; translated_text: string }[];
+  message_type: string;
+  attachments: MessageAttachment[] | null;
+  message_translations: Translation[];
   message_receipts: Receipt[];
 };
 
+/** Below this score the translation is flagged as possibly imprecise. */
+const LOW_CONFIDENCE = 0.6;
+
 const SELECT =
-  "id, sender_id, original_text, source_language, created_at, status, translation_status, reply_to_message_id, deleted_at, deleted_for, message_translations(language, translated_text), message_receipts(user_id, delivered_at, read_at)";
+  "id, sender_id, original_text, source_language, created_at, status, translation_status, reply_to_message_id, deleted_at, deleted_for, message_type, attachments, message_translations(language, translated_text, confidence_score, alternative_translation, corrected_by_user), message_receipts(user_id, delivered_at, read_at)";
+
 
 function ChatPage() {
+  const { t } = useT();
   const { conversationId } = Route.useParams();
   const { data: user } = useCurrentUser();
   const { data: profile } = useProfile();
@@ -82,6 +124,8 @@ function ChatPage() {
   const queryClient = useQueryClient();
   const runTranslate = useServerFn(translateMessage);
   const runBackfill = useServerFn(backfillConversation);
+  const runRecoverVoice = useServerFn(recoverStalledVoice);
+  const runRecoverTranslation = useServerFn(recoverStalledTranslation);
   const [draft, setDraft] = useState("");
   const [limit, setLimit] = useState(PAGE_SIZE);
   const [showOriginal, setShowOriginal] = useState<Record<string, boolean>>({});
@@ -89,9 +133,13 @@ function ChatPage() {
   const [replyTo, setReplyTo] = useState<MessageRow | null>(null);
   const [pending, setPending] = useState<PendingMessage[]>([]);
   const [online, setOnline] = useState(true);
+  const [pickerFor, setPickerFor] = useState<string | null>(null);
+  const [correcting, setCorrecting] = useState<MessageRow | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const { preferences } = useChatPreferences(conversationId);
   const backgroundPhoto = useBackgroundPhotoUrl(preferences);
+  const reactions = useReactions(conversationId);
+
 
   const myLanguage = profile?.primary_language ?? "fr";
   const messagesKey = useMemo(
@@ -111,26 +159,49 @@ function ChatPage() {
     };
   }, []);
 
-  const peerQuery = useQuery({
-    queryKey: ["conversation-peer", conversationId, user?.id],
+  /**
+   * One query for the whole conversation: its metadata plus every participant
+   * profile. Groups can mix as many languages as there are members.
+   */
+  const conversationQuery = useQuery({
+    queryKey: ["conversation", conversationId, user?.id],
     enabled: Boolean(user?.id),
     queryFn: async () => {
+      const { data: conversation } = await supabase
+        .from("conversations")
+        .select("id, type, name, avatar_url")
+        .eq("id", conversationId)
+        .maybeSingle();
+
       const { data: participants } = await supabase
         .from("conversation_participants")
         .select("user_id")
-        .eq("conversation_id", conversationId)
-        .neq("user_id", user!.id);
-      const peerId = participants?.[0]?.user_id;
-      if (!peerId) return null;
-      const { data } = await supabase
-        .from("profiles")
-        .select("id, username, avatar_url, primary_language")
-        .eq("id", peerId)
-        .maybeSingle();
-      return data;
+        .eq("conversation_id", conversationId);
+
+      const ids = (participants ?? []).map((row) => row.user_id);
+      const { data: profiles } = ids.length
+        ? await supabase
+            .from("profiles")
+            .select("id, username, avatar_url, primary_language")
+            .in("id", ids)
+        : { data: [] };
+
+      return { conversation, members: profiles ?? [] };
     },
   });
-  const peer = peerQuery.data;
+
+  const members = conversationQuery.data?.members ?? [];
+  const others = useMemo(
+    () => members.filter((member) => member.id !== user?.id),
+    [members, user?.id],
+  );
+  const isGroup =
+    conversationQuery.data?.conversation?.type === "group" || others.length > 1;
+  const peer = others[0] ?? null;
+  const memberById = useMemo(() => new Map(members.map((m) => [m.id, m])), [members]);
+  const title = isGroup
+    ? (conversationQuery.data?.conversation?.name ?? t("chat.groupFallbackName"))
+    : (peer?.username ?? t("chat.conversationFallbackName"));
 
   const messagesQuery = useQuery({
     queryKey: messagesKey,
@@ -209,12 +280,14 @@ function ChatPage() {
         "postgres_changes",
         { event: "*", schema: "public", table: "message_translations" },
         (payload) => {
-          const row = payload.new as {
-            message_id?: string;
-            language?: string;
-            translated_text?: string;
-          };
+          const row = payload.new as Partial<Translation> & { message_id?: string };
           if (!row?.message_id || !row.language || !row.translated_text) return;
+          const next: Translation = {
+            language: row.language,
+            translated_text: row.translated_text,
+            confidence_score: row.confidence_score ?? null,
+            corrected_by_user: row.corrected_by_user ?? null,
+          };
           patchMessages((rows) =>
             rows.map((message) =>
               message.id === row.message_id
@@ -222,9 +295,10 @@ function ChatPage() {
                     ...message,
                     message_translations: [
                       ...message.message_translations.filter((t) => t.language !== row.language),
-                      { language: row.language!, translated_text: row.translated_text! },
+                      next,
                     ],
                   }
+
                 : message,
             ),
           );
@@ -308,33 +382,98 @@ function ChatPage() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.length, pending.length]);
 
+  /**
+   * A transport failure (Safari suspending the tab, flaky mobile network) is not
+   * a rejected message: it must be retried, not reported as "not sent".
+   */
+  function isTransportError(error: unknown) {
+    const message = (error as { message?: string })?.message?.toLowerCase() ?? "";
+    return (
+      !navigator.onLine ||
+      message.includes("failed to fetch") ||
+      message.includes("load failed") ||
+      message.includes("network") ||
+      message.includes("timeout") ||
+      message.includes("aborted")
+    );
+  }
+
+  /** True when the request was refused because the access token had expired. */
+  function isAuthError(error: unknown) {
+    const anyError = error as { message?: string; code?: string; status?: number };
+    const message = anyError?.message?.toLowerCase() ?? "";
+    return (
+      anyError?.status === 401 ||
+      message.includes("jwt") ||
+      message.includes("token") ||
+      // RLS refusal caused by auth.uid() being null after a silent expiry
+      anyError?.code === "42501"
+    );
+  }
+
+  const inFlight = useRef(new Set<string>());
+
   /** Inserts the message, then kicks translation off separately. */
   const deliver = useCallback(
     async (item: PendingMessage) => {
-      const { data, error } = await supabase
-        .from("messages")
-        .insert({
-          conversation_id: item.conversationId,
-          sender_id: user!.id,
-          original_text: item.text,
-          source_language: item.sourceLanguage,
-          translation_status: "pending",
-          status: "sent",
-          reply_to_message_id: item.replyToMessageId ?? null,
-        })
-        .select(SELECT)
-        .single();
-      if (error) throw error;
+      if (inFlight.current.has(item.localId)) return;
+      inFlight.current.add(item.localId);
+      try {
+        // iOS Safari freezes background tabs: the cached token can be expired by
+        // the time the user comes back. Refresh before writing, retry once.
+        const insert = () =>
+          supabase
+            .from("messages")
+            .insert({
+              conversation_id: item.conversationId,
+              sender_id: user!.id,
+              // Idempotency key: the unique (sender_id, client_id) index turns a
+              // replayed outbox item into a conflict instead of a duplicate.
+              client_id: item.localId,
+              original_text: item.text,
+              source_language: item.sourceLanguage,
+              translation_status: "pending",
+              status: "sent",
+              reply_to_message_id: item.replyToMessageId ?? null,
+            })
+            .select(SELECT)
+            .single();
 
-      dequeueOutbox(item.localId);
-      setPending((queue) => queue.filter((entry) => entry.localId !== item.localId));
-      const row = data as MessageRow;
-      patchMessages((rows) => (rows.some((m) => m.id === row.id) ? rows : [...rows, row]));
+        let { data, error } = await insert();
+        if (error && isAuthError(error)) {
+          await supabase.auth.refreshSession();
+          ({ data, error } = await insert());
+        }
+        // Already delivered by an earlier attempt whose response never came back:
+        // adopt the existing row instead of creating a second message.
+        if (error && (error as { code?: string }).code === "23505") {
+          const { data: existing } = await supabase
+            .from("messages")
+            .select(SELECT)
+            .eq("conversation_id", item.conversationId)
+            .eq("sender_id", user!.id)
+            .eq("client_id", item.localId)
+            .maybeSingle();
+          if (existing) {
+            data = existing as typeof data;
+            error = null;
+          }
+        }
+        if (error) throw error;
 
-      // Translation runs independently: a failure must never unsend the message.
-      void runTranslate({ data: { messageId: row.id } }).catch((translationError) => {
-        handleError("TRANSLATION_ERROR", translationError);
-      });
+        dequeueOutbox(item.localId);
+        setPending((queue) => queue.filter((entry) => entry.localId !== item.localId));
+        const row = data as MessageRow;
+        patchMessages((rows) => (rows.some((m) => m.id === row.id) ? rows : [...rows, row]));
+
+        // Translation runs independently: a failure must never unsend the message.
+        void runTranslate({ data: { messageId: row.id } }).catch((translationError) => {
+          handleError("TRANSLATION_ERROR", translationError);
+        });
+
+      } finally {
+        inFlight.current.delete(item.localId);
+      }
     },
     [user, patchMessages, runTranslate],
   );
@@ -355,9 +494,44 @@ function ChatPage() {
     setPending(listOutbox(conversationId));
     void flushOutbox();
     const onUp = () => void flushOutbox();
+    // Safari never fires "online" when a suspended PWA resumes — retry on focus.
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void flushOutbox();
+    };
     window.addEventListener("online", onUp);
-    return () => window.removeEventListener("online", onUp);
+    document.addEventListener("visibilitychange", onVisible);
+    const timer = window.setInterval(() => void flushOutbox(), 15_000);
+    return () => {
+      window.removeEventListener("online", onUp);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.clearInterval(timer);
+    };
   }, [conversationId, flushOutbox]);
+
+  // Voice notes whose processing request died mid-flight are resumed once here,
+  // so no bubble can stay on "Transcription…"/"Traduction…" forever.
+  const recoveredVoice = useRef<string | null>(null);
+  useEffect(() => {
+    if (!user?.id || recoveredVoice.current === conversationId) return;
+    recoveredVoice.current = conversationId;
+    void Promise.allSettled([
+      runRecoverVoice({ data: { conversationId } }),
+      runRecoverTranslation({ data: { conversationId } }),
+    ])
+      .then((results) => {
+        const recovered = results.some(
+          (result) =>
+            result.status === "fulfilled" &&
+            Boolean((result.value as { recovered?: number } | undefined)?.recovered),
+        );
+        if (recovered) void messagesQuery.refetch();
+      })
+      .catch(() => {
+        recoveredVoice.current = null;
+      });
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversationId, user?.id]);
 
   const sendMutation = useMutation({
     mutationFn: async (text: string) => {
@@ -375,8 +549,18 @@ function ChatPage() {
       if (!navigator.onLine) return;
       await deliver(item);
     },
-    onError: (error) => toast.error(handleError("MESSAGE_ERROR", error)),
+    onError: (error) => {
+      // The message is still queued in the outbox and will be retried: telling
+      // the user it was not sent would be wrong.
+      if (isTransportError(error)) {
+        handleError("NETWORK_ERROR", error);
+        toast.info(t("chat.networkUnstable"));
+        return;
+      }
+      toast.error(handleError("MESSAGE_ERROR", error));
+    },
   });
+
 
   const retryTranslation = useMutation({
     mutationFn: async (messageId: string) => runTranslate({ data: { messageId } }),
@@ -419,7 +603,33 @@ function ChatPage() {
     return { background: color, color: readableTextColor(color) };
   };
 
+  const [inviting, setInviting] = useState(false);
+  const [memoryOpen, setMemoryOpen] = useState(false);
+  const navigate = useNavigate();
+
+  /**
+   * Leaving a group only removes MY participation (RLS allows deleting my own
+   * row): the conversation and its history stay intact for the other members.
+   */
+  const leaveGroup = useCallback(async () => {
+    if (!user?.id) return;
+    if (!window.confirm(t("chat.leaveGroupConfirm"))) return;
+    haptic();
+    const { error } = await supabase
+      .from("conversation_participants")
+      .delete()
+      .eq("conversation_id", conversationId)
+      .eq("user_id", user.id);
+    if (error) {
+      toast.error(handleError("DATABASE_ERROR", error));
+      return;
+    }
+    await queryClient.invalidateQueries({ queryKey: ["conversations"] });
+    void navigate({ to: "/chats" });
+  }, [conversationId, navigate, queryClient, user?.id]);
+
   const byId = useMemo(() => new Map(messages.map((m) => [m.id, m])), [messages]);
+
 
   return (
     <div
@@ -429,34 +639,84 @@ function ChatPage() {
       <header className="glass-strong safe-top sticky top-0 z-30 flex items-center gap-3 px-4 py-3">
         <Link
           to="/chats"
-          aria-label="Retour aux discussions"
+          aria-label={t("chat.back")}
           className="flex h-9 w-9 items-center justify-center rounded-2xl text-muted-foreground focus-visible:ring-2 focus-visible:ring-primary"
         >
           <ArrowLeft className="h-5 w-5" />
         </Link>
-        <Avatar name={peer?.username} url={peer?.avatar_url} size={40} />
+        <Avatar
+          name={isGroup ? title : peer?.username}
+          url={isGroup ? conversationQuery.data?.conversation?.avatar_url : peer?.avatar_url}
+          size={40}
+        />
         <div className="min-w-0 flex-1">
-          <p className="truncate font-semibold">{peer?.username ?? "Conversation"}</p>
-          <p className="flex items-center gap-1 text-[11px] text-muted-foreground">
+          <p className="truncate font-semibold">{title}</p>
+          <p className="flex items-center gap-1 truncate text-[11px] text-muted-foreground">
             {peerTyping ? (
-              <span className="text-primary">{peer?.username ?? "Votre ami"} écrit…</span>
+              <span className="text-primary">
+                {t("chat.typing", { name: peer?.username ?? t("chat.typingFallbackName") })}
+              </span>
+            ) : isGroup ? (
+              <>
+                <Languages className="h-3 w-3" />
+                {t("chat.members", {
+                  count: others.length + 1,
+                  languages: [...new Set(members.map((m) => languageLabel(m.primary_language)))].join(", "),
+                })}
+              </>
             ) : peerOnline ? (
-              <span className="text-emerald-400">En ligne</span>
+              <span className="text-emerald-400">{t("chat.online")}</span>
             ) : (
               <>
                 <Languages className="h-3 w-3" />
-                {languageLabel(peer?.primary_language)} → {languageLabel(myLanguage)}
+                {t("chat.languagePair", {
+                  peerLanguage: languageLabel(peer?.primary_language),
+                  myLanguage: languageLabel(myLanguage),
+                })}
               </>
             )}
           </p>
         </div>
+        {isGroup ? (
+          <button
+            type="button"
+            onClick={() => void leaveGroup()}
+            aria-label={t("chat.leaveGroup")}
+            className="glass flex h-9 w-9 items-center justify-center rounded-2xl text-muted-foreground active:scale-90 focus-visible:ring-2 focus-visible:ring-primary"
+          >
+            <LogOut className="h-4 w-4" />
+          </button>
+        ) : null}
+        <button
+          type="button"
+          onClick={() => {
+            haptic();
+            setInviting(true);
+          }}
+          aria-label={t("chat.invite")}
+          className="glass flex h-9 w-9 items-center justify-center rounded-2xl text-muted-foreground active:scale-90 focus-visible:ring-2 focus-visible:ring-primary"
+        >
+          <UserPlus className="h-4 w-4" />
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            haptic();
+            setMemoryOpen(true);
+          }}
+          aria-label={t("chat.memory")}
+          className="glass flex h-9 w-9 items-center justify-center rounded-2xl text-muted-foreground active:scale-90 focus-visible:ring-2 focus-visible:ring-primary"
+        >
+          <BrainCircuit className="h-4 w-4" />
+        </button>
         <button
           type="button"
           onClick={() => {
             haptic();
             setCustomizing(true);
           }}
-          aria-label="Personnaliser le chat"
+          aria-label={t("chat.customize")}
           className="glass flex h-9 w-9 items-center justify-center rounded-2xl text-muted-foreground active:scale-90 focus-visible:ring-2 focus-visible:ring-primary"
         >
           <Palette className="h-4 w-4" />
@@ -465,7 +725,7 @@ function ChatPage() {
 
       {!online ? (
         <p className="flex items-center justify-center gap-2 bg-amber-500/10 py-1.5 text-[11px] text-amber-400">
-          <WifiOff className="h-3 w-3" /> Hors connexion — vos messages partiront au retour du réseau
+          <WifiOff className="h-3 w-3" /> {t("chat.offline")}
         </p>
       ) : null}
 
@@ -477,13 +737,13 @@ function ChatPage() {
               onClick={() => setLimit((value) => value + PAGE_SIZE)}
               className="glass rounded-2xl px-4 py-1.5 text-[12px] text-muted-foreground focus-visible:ring-2 focus-visible:ring-primary"
             >
-              Charger les messages précédents
+              {t("chat.loadPrevious")}
             </button>
           </div>
         ) : null}
 
         {messagesQuery.isLoading ? (
-          <p className="py-10 text-center text-sm text-muted-foreground">Chargement…</p>
+          <p className="py-10 text-center text-sm text-muted-foreground">{t("chat.loading")}</p>
         ) : messagesQuery.isError ? (
           <div role="alert" className="glass mt-8 rounded-3xl p-6 text-center text-sm">
             <p>{handleError("MESSAGE_ERROR", messagesQuery.error)}</p>
@@ -492,15 +752,20 @@ function ChatPage() {
               onClick={() => void messagesQuery.refetch()}
               className="bg-brand mt-4 rounded-2xl px-4 py-2 text-xs font-semibold text-primary-foreground"
             >
-              Réessayer
+              {t("chat.retry")}
             </button>
           </div>
         ) : messages.length === 0 && pending.length === 0 ? (
           <div className="glass animate-rise mt-8 rounded-3xl p-6 text-center">
-            <p className="font-semibold">Première conversation</p>
+            <p className="font-semibold">{t("chat.emptyTitle")}</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              Écrivez en {languageLabel(myLanguage)} — {peer?.username ?? "votre ami"} lira en{" "}
-              {languageLabel(peer?.primary_language)}.
+              {isGroup
+                ? t("chat.emptyBodyGroup", { language: languageLabel(myLanguage) })
+                : t("chat.emptyBodyDirect", {
+                    language: languageLabel(myLanguage),
+                    name: peer?.username ?? t("chat.emptyBodyFallbackName"),
+                    peerLanguage: languageLabel(peer?.primary_language),
+                  })}
             </p>
           </div>
         ) : (
@@ -513,20 +778,44 @@ function ChatPage() {
             const translated = !mine && translation && message.source_language !== myLanguage;
             const original = showOriginal[message.id] === true;
             const body = translated && !original ? translation.translated_text : message.original_text;
+            // A translation still "pending" long after the message was stored
+            // means the job died: show the original text plus a retry instead
+            // of an endless "Traduction…" spinner.
+            const stale =
+              message.translation_status === "pending" &&
+              Date.now() - Date.parse(message.created_at) > STALE_TRANSLATION_MS;
             const waiting =
               !mine && !translation && message.source_language !== myLanguage &&
-              message.translation_status !== "failed";
-            const failed = message.translation_status === "failed";
+              message.translation_status !== "failed" && !stale;
+            const failed = message.translation_status === "failed" || stale;
+
             const quoted = message.reply_to_message_id
               ? byId.get(message.reply_to_message_id)
               : null;
-            const peerReceipt = message.message_receipts.find((r) => r.user_id !== user?.id);
+            const otherReceipts = message.message_receipts.filter((r) => r.user_id !== user?.id);
+            const peerReceipt = otherReceipts[0];
+            const readCount = otherReceipts.filter((r) => r.read_at).length;
+            const author = mine ? null : memberById.get(message.sender_id);
+            // Only warn when the engine itself signalled doubt: a badge on
+            // every bubble would be noise.
+            const uncertain =
+              Boolean(translated) &&
+              !original &&
+              translation?.corrected_by_user !== true &&
+              typeof translation?.confidence_score === "number" &&
+              translation.confidence_score < LOW_CONFIDENCE;
+
 
             return (
               <div
                 key={message.id}
                 className={`animate-rise group flex flex-col ${mine ? "items-end" : "items-start"}`}
               >
+                {isGroup && author && !removed ? (
+                  <span className="mb-0.5 px-2 text-[11px] font-medium text-muted-foreground">
+                    {author.username}
+                  </span>
+                ) : null}
                 <div
                   style={removed ? {} : bubbleStyle(mine)}
                   className={`max-w-[80%] rounded-3xl px-4 py-2.5 text-[15px] leading-snug ${
@@ -542,16 +831,56 @@ function ChatPage() {
                       {quoted.original_text.slice(0, 80)}
                     </span>
                   ) : null}
+                  {!removed && message.attachments?.length ? (
+                    <MessageAttachments
+                      attachments={message.attachments}
+                      messageId={message.id}
+                      transcriptionFailed={
+                        message.message_type === "voice" && message.translation_status === "failed"
+                      }
+                    />
+                  ) : null}
                   {removed ? (
-                    "Message supprimé"
+                    t("chat.deletedMessage")
                   ) : waiting ? (
                     <span className="flex items-center gap-2 opacity-70">
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" /> Traduction…
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" /> {t("chat.translating")}
                     </span>
                   ) : (
                     body
                   )}
                 </div>
+
+                {uncertain ? (
+                  <p className="mt-1 flex items-center gap-1 px-2 text-[11px] text-amber-400">
+                    <AlertTriangle className="h-3 w-3" /> {t("chat.uncertainTranslation")}
+                  </p>
+                ) : null}
+
+                {!removed && !original && translation?.alternative_translation ? (
+                  <p className="mt-1 max-w-[80%] px-2 text-[11px] text-muted-foreground">
+                    {t("chat.alternativeTranslation", { text: translation.alternative_translation })}
+                  </p>
+                ) : null}
+
+                {!removed && !waiting ? <LinkPreviewCard text={message.original_text} /> : null}
+
+                <MessageReactions
+                  conversationId={conversationId}
+                  messageId={message.id}
+                  reactions={reactions}
+                  mine={mine}
+                />
+
+                {pickerFor === message.id ? (
+                  <div className="mt-1">
+                    <ReactionPicker
+                      conversationId={conversationId}
+                      messageId={message.id}
+                      onDone={() => setPickerFor(null)}
+                    />
+                  </div>
+                ) : null}
 
                 {!removed ? (
                   <div className="mt-1 flex items-center gap-2 px-2 text-[11px] text-muted-foreground">
@@ -564,47 +893,74 @@ function ChatPage() {
                         className="font-medium focus-visible:ring-2 focus-visible:ring-primary"
                       >
                         {original
-                          ? "Voir la traduction"
-                          : `Voir l'original ${languageFlag(message.source_language)}`}
+                          ? t("chat.seeTranslation")
+                          : t("chat.seeOriginal", { flag: languageFlag(message.source_language) })}
                       </button>
                     ) : null}
 
                     <button
                       type="button"
-                      aria-label="Répondre à ce message"
+                      aria-label={t("chat.reactToMessage")}
+                      onClick={() => setPickerFor((id) => (id === message.id ? null : message.id))}
+                      className="opacity-0 transition-opacity group-hover:opacity-100 focus:opacity-100"
+                    >
+                      <Smile className="h-3 w-3" />
+                    </button>
+
+                    {translation ? (
+                      <button
+                        type="button"
+                        aria-label={t("chat.correctTranslation")}
+                        onClick={() => setCorrecting(message)}
+                        className="opacity-0 transition-opacity group-hover:opacity-100 focus:opacity-100"
+                      >
+                        <PencilLine className="h-3 w-3" />
+                      </button>
+                    ) : null}
+
+                    <button
+                      type="button"
+                      aria-label={t("chat.replyToMessage")}
                       onClick={() => setReplyTo(message)}
                       className="opacity-0 transition-opacity group-hover:opacity-100 focus:opacity-100"
                     >
                       <CornerUpLeft className="h-3 w-3" />
                     </button>
 
+
                     {mine ? (
                       <>
                         <button
                           type="button"
-                          aria-label="Supprimer ce message"
+                          aria-label={t("chat.deleteMessage")}
                           onClick={() => deleteMessage.mutate({ message, forEveryone: true })}
                           className="opacity-0 transition-opacity group-hover:opacity-100 focus:opacity-100"
                         >
                           <Trash2 className="h-3 w-3" />
                         </button>
-                        {peerReceipt?.read_at ? (
-                          <CheckCheck className="h-3.5 w-3.5 text-primary" aria-label="Lu" />
+                        {isGroup ? (
+                          readCount > 0 ? (
+                            <span className="text-primary">{t("chat.readByCount", { count: readCount })}</span>
+                          ) : (
+                            <Check className="h-3.5 w-3.5" aria-label={t("chat.sent")} />
+                          )
+                        ) : peerReceipt?.read_at ? (
+                          <CheckCheck className="h-3.5 w-3.5 text-primary" aria-label={t("chat.read")} />
                         ) : peerReceipt?.delivered_at ? (
-                          <CheckCheck className="h-3.5 w-3.5" aria-label="Reçu" />
+                          <CheckCheck className="h-3.5 w-3.5" aria-label={t("chat.delivered")} />
                         ) : (
-                          <Check className="h-3.5 w-3.5" aria-label="Envoyé" />
+                          <Check className="h-3.5 w-3.5" aria-label={t("chat.sent")} />
                         )}
                       </>
                     ) : null}
 
-                    {failed && mine ? (
+                    {failed ? (
                       <button
                         type="button"
                         onClick={() => retryTranslation.mutate(message.id)}
                         className="flex items-center gap-1 text-amber-400"
                       >
-                        <RefreshCw className="h-3 w-3" /> Traduction échouée — réessayer
+                        <RefreshCw className="h-3 w-3" /> {t("chat.translationFailedRetry")}
                       </button>
                     ) : null}
                   </div>
@@ -619,7 +975,7 @@ function ChatPage() {
             <div className="bg-brand max-w-[80%] rounded-3xl rounded-br-lg px-4 py-2.5 text-[15px] leading-snug text-primary-foreground opacity-60">
               {item.text}
             </div>
-            <span className="mt-1 px-2 text-[11px] text-muted-foreground">En attente d'envoi…</span>
+            <span className="mt-1 px-2 text-[11px] text-muted-foreground">{t("chat.pendingSend")}</span>
           </div>
         ))}
         <div ref={bottomRef} />
@@ -631,7 +987,7 @@ function ChatPage() {
           <span className="min-w-0 flex-1 truncate text-muted-foreground">
             {replyTo.original_text}
           </span>
-          <button type="button" aria-label="Annuler la réponse" onClick={() => setReplyTo(null)}>
+          <button type="button" aria-label={t("chat.cancelReply")} onClick={() => setReplyTo(null)}>
             <X className="h-3.5 w-3.5" />
           </button>
         </div>
@@ -641,25 +997,79 @@ function ChatPage() {
         onSubmit={handleSend}
         className="glass-strong safe-bottom sticky bottom-0 z-30 flex items-center gap-2 px-3 py-3"
       >
+        <MediaComposer
+          conversationId={conversationId}
+          language={myLanguage}
+          onSent={() => void messagesQuery.refetch()}
+        />
         <input
           value={draft}
           onChange={(event) => {
             setDraft(event.target.value);
             notifyTyping();
           }}
-          aria-label="Votre message"
-          placeholder={`Écrire en ${languageLabel(myLanguage)}…`}
+          aria-label={t("chat.yourMessage")}
+          placeholder={t("chat.composerHint", { language: languageLabel(myLanguage) })}
           className="glass h-12 flex-1 rounded-3xl px-4 text-[15px] outline-none placeholder:text-muted-foreground/70 focus-visible:ring-2 focus-visible:ring-primary"
         />
         <button
           type="submit"
           disabled={!draft.trim()}
           className="bg-brand shadow-glow flex h-12 w-12 items-center justify-center rounded-3xl text-primary-foreground transition-transform duration-300 active:scale-90 disabled:opacity-40"
-          aria-label="Envoyer"
+          aria-label={t("chat.send")}
         >
           <SendHorizonal className="h-5 w-5" />
         </button>
       </form>
+
+      <CorrectTranslationSheet
+        open={correcting !== null}
+        onClose={() => setCorrecting(null)}
+        messageId={correcting?.id ?? null}
+        language={myLanguage}
+        sourceLanguage={correcting?.source_language ?? myLanguage}
+        originalText={correcting?.original_text ?? ""}
+        currentTranslation={
+          correcting?.message_translations.find((item) => item.language === myLanguage)
+            ?.translated_text ?? ""
+        }
+        onCorrected={(text) => {
+          const id = correcting?.id;
+          if (!id) return;
+          patchMessages((rows) =>
+            rows.map((message) =>
+              message.id === id
+                ? {
+                    ...message,
+                    message_translations: [
+                      ...message.message_translations.filter((t) => t.language !== myLanguage),
+                      {
+                        language: myLanguage,
+                        translated_text: text,
+                        confidence_score: 1,
+                        corrected_by_user: true,
+                      },
+                    ],
+                  }
+                : message,
+            ),
+          );
+        }}
+      />
+
+
+
+      <InviteSheet
+        open={inviting}
+        onClose={() => setInviting(false)}
+        conversationId={conversationId}
+      />
+
+      <ConversationMemorySheet
+        open={memoryOpen}
+        onClose={() => setMemoryOpen(false)}
+        conversationId={conversationId}
+      />
 
       <ChatCustomizer
         open={customizing}

@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
+import { useT } from "@/lib/i18n";
 
 /** Renders a QR code as a data-URL image (client only). */
 export function QrCode({ value, size = 232 }: { value: string; size?: number }) {
+  const { t } = useT();
   const [src, setSrc] = useState<string | null>(null);
 
   useEffect(() => {
@@ -32,7 +34,7 @@ export function QrCode({ value, size = 232 }: { value: string; size?: number }) 
   return (
     <img
       src={src}
-      alt="QR code"
+      alt={t("invite.qrAlt")}
       width={size}
       height={size}
       className="rounded-3xl bg-white p-3"

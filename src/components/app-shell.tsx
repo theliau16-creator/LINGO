@@ -15,6 +15,7 @@ export function Avatar({
   size?: number | undefined;
   ring?: boolean | undefined;
 }) {
+  const { t } = useT();
   const initials = (name ?? "?")
     .split(/\s+/)
     .map((part) => part[0])
@@ -31,7 +32,7 @@ export function Avatar({
       style={{ width: size, height: size, fontSize: size * 0.36 }}
     >
       {url ? (
-        <img src={url} alt={name ?? "Avatar"} className="h-full w-full object-cover" />
+        <img src={url} alt={name ?? t("social.avatarAlt")} className="h-full w-full object-cover" />
       ) : (
         <span>{initials}</span>
       )}

@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { CreditCard, FlaskConical, Loader2, QrCode, ScanLine, Sparkles, Trash2 } from "lucide-react";
+import { CreditCard, Download, Loader2, QrCode, ScanLine, Sparkles, Trash2 } from "lucide-react";
 
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -14,7 +14,7 @@ import { QrScanner } from "@/components/qr-scanner";
 import { useCurrentUser, useProfile } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { haptic } from "@/lib/chat-theme";
-import { deleteMyAccount } from "@/lib/account.functions";
+import { deleteMyAccount, exportMyData } from "@/lib/account.functions";
 import { useT } from "@/lib/i18n";
 import { issueDeviceLinkToken } from "@/lib/device-link.functions";
 import { languageFlag, languageLabel } from "@/lib/languages";
@@ -52,6 +52,22 @@ function ProfilePage() {
   const [deleting, setDeleting] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const removeAccount = useServerFn(deleteMyAccount);
+  const downloadMyData = useServerFn(exportMyData);
+
+  const exportData = useMutation({
+    mutationFn: async () => downloadMyData({}),
+    onSuccess: (payload) => {
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `lingo-donnees-${new Date().toISOString().slice(0, 10)}.json`;
+      link.click();
+      URL.revokeObjectURL(url);
+      toast.success(t("social.profile.exportReadyTitle"), { description: t("social.profile.exportReadyDesc") });
+    },
+    onError: () => toast.error(t("social.profile.exportFailedTitle"), { description: t("common.retry") }),
+  });
 
   const deleteAccountMutation = useMutation({
     mutationFn: async () => removeAccount({ data: { confirmation: deleteConfirm.trim() } }),
@@ -61,8 +77,8 @@ function ProfilePage() {
       window.location.assign("/");
     },
     onError: (error) =>
-      toast.error("Suppression impossible", {
-        description: error instanceof Error ? error.message : "Réessayez dans un instant.",
+      toast.error(t("social.profile.deleteFailedTitle"), {
+        description: error instanceof Error ? error.message : t("common.retry"),
       }),
   });
 
@@ -241,26 +257,12 @@ function ProfilePage() {
           {t("common.save")}
         </button>
 
-        <Link
-          to="/playground"
-          className="glass flex items-center gap-3 rounded-3xl p-4 active:scale-[0.98]"
-        >
-          <span className="bg-brand flex h-10 w-10 items-center justify-center rounded-2xl text-primary-foreground">
-            <FlaskConical className="h-4 w-4" />
-          </span>
-          <span className="flex-1">
-            <span className="block font-semibold">{t("settings.playground")}</span>
-            <span className="block text-xs text-muted-foreground">
-              {t("settings.playgroundHint")}
-            </span>
-          </span>
-        </Link>
       </div>
 
 
       <section className="mt-8">
         <h2 className="mb-2 px-1 text-[11px] font-semibold tracking-widest text-destructive uppercase">
-          Zone sensible
+          {t("social.profile.sensitiveZone")}
         </h2>
         <button
           type="button"
@@ -275,23 +277,48 @@ function ProfilePage() {
             <Trash2 className="h-4 w-4" />
           </span>
           <span className="flex-1">
-            <span className="block font-semibold text-destructive">Supprimer mon compte</span>
+            <span className="block font-semibold text-destructive">{t("social.profile.deleteAccount")}</span>
             <span className="block text-xs text-muted-foreground">
-              Efface définitivement votre profil, vos discussions et votre abonnement.
+              {t("social.profile.deleteAccountHint")}
+            </span>
+          </span>
+        </button>
+
+        <button
+          type="button"
+          disabled={exportData.isPending}
+          onClick={() => {
+            haptic();
+            exportData.mutate();
+          }}
+          className="glass mt-3 flex w-full items-center gap-3 rounded-3xl p-4 text-left active:scale-[0.98] disabled:opacity-60"
+        >
+          <span className="bg-primary/15 text-primary flex h-10 w-10 items-center justify-center rounded-2xl">
+            {exportData.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Download className="h-4 w-4" />
+            )}
+          </span>
+          <span className="flex-1">
+            <span className="block font-semibold">{t("social.profile.downloadData")}</span>
+            <span className="block text-xs text-muted-foreground">
+              {t("social.profile.downloadDataHint")}
             </span>
           </span>
         </button>
       </section>
 
-      <BottomSheet open={deleting} onClose={() => setDeleting(false)} title="Supprimer mon compte">
+
+      <BottomSheet open={deleting} onClose={() => setDeleting(false)} title={t("social.profile.deleteAccount")}>
         <p className="text-sm text-muted-foreground">
-          Cette action est irréversible. Votre abonnement est annulé et vos données personnelles
-          sont supprimées. Tapez <strong>SUPPRIMER</strong> pour confirmer.
+          {t("social.profile.deleteConfirmBody")} <strong>SUPPRIMER</strong>{" "}
+          {t("social.profile.deleteConfirmSuffix")}
         </p>
         <input
           value={deleteConfirm}
           onChange={(event) => setDeleteConfirm(event.target.value)}
-          aria-label="Confirmation de suppression"
+          aria-label={t("social.profile.deleteConfirmAriaLabel")}
           placeholder="SUPPRIMER"
           className="bg-secondary/60 mt-4 w-full rounded-2xl px-4 py-3 text-sm outline-none"
         />
@@ -302,7 +329,7 @@ function ProfilePage() {
           className="bg-destructive text-destructive-foreground mt-3 flex w-full items-center justify-center gap-2 rounded-2xl py-3 text-sm font-semibold active:scale-95 disabled:opacity-50"
         >
           {deleteAccountMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-          Supprimer définitivement
+          {t("social.profile.deletePermanently")}
         </button>
       </BottomSheet>
 

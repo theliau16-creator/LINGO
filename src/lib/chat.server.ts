@@ -1,5 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { collectTargetLanguages, mapWithConcurrency } from "@/lib/translation-targets";
 import type { Database } from "@/integrations/supabase/types";
+
 import { translateWithRouter } from "@/services/translation/registry.server";
 import type { TranslationContextMessage, TranslationMode } from "@/services/translation/types";
 
@@ -34,11 +36,17 @@ export async function ensureTranslation(
   supabase: Client,
   messageId: string,
   language: string,
-  options?: { mode?: TranslationMode; engine?: string | null; quotaUserId?: string | null },
+  options?: {
+    mode?: TranslationMode;
+    engine?: string | null;
+    quotaUserId?: string | null;
+    /** Pre-fetched context, shared across the fan-out of a single message. */
+    context?: TranslationContextMessage[];
+  },
 ) {
   const { data: existing } = await supabase
     .from("message_translations")
-    .select("translated_text, engine")
+    .select("translated_text, engine, confidence_score, corrected_by_user, alternative_translation")
     .eq("message_id", messageId)
     .eq("language", language)
     .maybeSingle();
@@ -60,47 +68,99 @@ export async function ensureTranslation(
   const { assertQuota, consumeQuota } = await import("./quota.server");
   await assertQuota(options?.quotaUserId);
 
-  const context =
-    options?.mode === "premium"
-      ? await conversationContext(
-          supabase,
-          message.conversation_id,
-          message.created_at,
-          message.sender_id,
-        )
-      : undefined;
-
-  const result = await translateWithRouter(
-    {
-      text: message.original_text,
-      sourceLanguage: message.source_language,
-      targetLanguage: language,
-      ...(context ? { context } : {}),
-    },
-    { ...(options?.engine !== undefined ? { engine: options.engine } : {}),
-      ...(options?.mode ? { mode: options.mode } : {}) },
-  );
-
-  await consumeQuota(options?.quotaUserId);
-
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { error: insertError } = await supabaseAdmin
-    .from("message_translations")
-    .upsert(
-      {
-        message_id: message.id,
-        language,
-        translated_text: result.text,
-        engine: result.engine,
-      },
-      { onConflict: "message_id,language" },
-    );
-  if (insertError) throw new Error(insertError.message);
 
-  return { translated_text: result.text, engine: result.engine, cached: false };
+  // Cost guard: only one worker may pay for a given (message, language) pair.
+  // A concurrent caller waits for the cache instead of buying the same
+  // translation twice. Stale claims (>120 s) are automatically reclaimable.
+  const { data: claimed } = await supabaseAdmin.rpc("claim_translation_slot", {
+    _message_id: message.id,
+    _language: language,
+  });
+  if (claimed !== true) {
+    const { data: fresh } = await supabaseAdmin
+      .from("message_translations")
+      .select(
+        "translated_text, engine, confidence_score, corrected_by_user, alternative_translation",
+      )
+      .eq("message_id", messageId)
+      .eq("language", language)
+      .maybeSingle();
+    if (fresh) return { ...fresh, cached: true };
+    throw new Error("Traduction déjà en cours. Réessayez dans un instant.");
+  }
+
+  try {
+    // Group fan-out translates one message into N languages: the conversation
+    // context is identical for every target, so it is fetched once upstream.
+    const context =
+      options?.context ??
+      (options?.mode === "premium"
+        ? await conversationContext(
+            supabase,
+            message.conversation_id,
+            message.created_at,
+            message.sender_id ?? "",
+          )
+        : undefined);
+
+    // Relation-scoped memory: nicknames, private jokes and validated corrections
+    // of THIS conversation only. Never mixed with other conversations.
+    const { conversationGlossary } = await import("./translation-memory.server");
+    const glossary = await conversationGlossary(supabase, message.conversation_id, language);
+
+    const result = await translateWithRouter(
+      {
+        text: message.original_text,
+        sourceLanguage: message.source_language,
+        targetLanguage: language,
+        ...(context ? { context } : {}),
+        ...(glossary.length ? { glossary } : {}),
+      },
+      {
+        ...(options?.engine !== undefined ? { engine: options.engine } : {}),
+        ...(options?.mode ? { mode: options.mode } : {}),
+      },
+    );
+
+    await consumeQuota(options?.quotaUserId);
+
+    const { error: insertError } = await supabaseAdmin
+      .from("message_translations")
+      .upsert(
+        {
+          message_id: message.id,
+          language,
+          translated_text: result.text,
+          engine: result.engine,
+          translation_provider: result.engine,
+          confidence_score: result.confidence ?? null,
+          alternative_translation: result.alternative ?? null,
+        },
+        { onConflict: "message_id,language" },
+      );
+    if (insertError) throw new Error(insertError.message);
+
+    return {
+      translated_text: result.text,
+      engine: result.engine,
+      confidence_score: result.confidence ?? null,
+      alternative_translation: result.alternative ?? null,
+      cached: false,
+    };
+  } catch (error) {
+    // Free the slot so a later retry is not blocked by a failed attempt.
+    await supabaseAdmin.rpc("release_translation_slot", {
+      _message_id: message.id,
+      _language: language,
+    });
+    throw error;
+  }
+
 }
 
-/** Languages spoken by the participants of a conversation. */
+
+/** Languages spoken by the participants (and web guests) of a conversation. */
 async function participantLanguages(supabase: Client, conversationId: string) {
   const { data: participants } = await supabase
     .from("conversation_participants")
@@ -108,20 +168,27 @@ async function participantLanguages(supabase: Client, conversationId: string) {
     .eq("conversation_id", conversationId);
 
   const userIds = (participants ?? []).map((p) => p.user_id);
-  if (userIds.length === 0) return new Set<string>();
+  const profiles = userIds.length
+    ? ((
+        await supabase
+          .from("profiles")
+          .select("id, primary_language, secondary_language")
+          .in("id", userIds)
+      ).data ?? [])
+    : [];
 
-  const { data: profiles } = await supabase
-    .from("profiles")
-    .select("id, primary_language, secondary_language")
-    .in("id", userIds);
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data: guests } = await supabaseAdmin
+    .from("guest_users")
+    .select("language")
+    .eq("conversation_id", conversationId);
 
-  const targets = new Set<string>();
-  for (const profile of profiles ?? []) {
-    if (profile.primary_language) targets.add(profile.primary_language);
-    if (profile.secondary_language) targets.add(profile.secondary_language);
-  }
-  return targets;
+  return collectTargetLanguages(
+    profiles,
+    (guests ?? []).map((guest) => guest.language),
+  );
 }
+
 
 /**
  * Translates a message into every language spoken by the participants.
@@ -159,16 +226,38 @@ export async function translateMessageForParticipants(
   let lastError: string | null = null;
   let translated = 0;
 
-  for (const language of targets) {
+  // Fetched once for the whole fan-out instead of once per target language.
+  const { data: full } = await supabase
+    .from("messages")
+    .select("sender_id, created_at")
+    .eq("id", messageId)
+    .maybeSingle();
+  const sharedContext =
+    targets.size > 1 && full
+      ? await conversationContext(
+          supabase,
+          message.conversation_id,
+          full.created_at,
+          full.sender_id ?? "",
+        )
+      : undefined;
+
+  // Bounded parallelism: a 5-language group no longer waits for 5 sequential
+  // AI calls, while the provider is never flooded by a single message.
+  await mapWithConcurrency([...targets], 3, async (language) => {
     try {
-      const result = await ensureTranslation(supabase, messageId, language, { quotaUserId: quotaUserId ?? null });
+      const result = await ensureTranslation(supabase, messageId, language, {
+        quotaUserId: quotaUserId ?? null,
+        ...(sharedContext ? { context: sharedContext } : {}),
+      });
       if (!result.cached) translated += 1;
     } catch (translationError) {
       failed += 1;
       lastError =
         translationError instanceof Error ? translationError.message : "Traduction indisponible.";
     }
-  }
+  });
+
 
   await supabaseAdmin
     .from("messages")
@@ -260,4 +349,55 @@ export async function openDirectConversation(supabase: Client, userId: string, f
   if (!conversationId) throw new Error("Impossible de créer la conversation");
 
   return { conversationId };
+}
+
+/** After this delay a message still in `pending` is abandoned work, not work in progress. */
+const TRANSLATION_STALL_MS = 60_000;
+
+/**
+ * Replays the translation of messages left in `pending` by a killed request
+ * (Safari tab suspended, worker recycled). Without this the bubble spins on
+ * "Traduction…" forever, since nothing server-side ever picks the row back up.
+ */
+export async function recoverStalledTranslations(conversationId: string, limit = 5) {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const threshold = new Date(Date.now() - TRANSLATION_STALL_MS).toISOString();
+
+  const { data: stalled } = await supabaseAdmin
+    .from("messages")
+    .select("id")
+    .eq("conversation_id", conversationId)
+    .eq("translation_status", "pending")
+    .lt("created_at", threshold)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  let recovered = 0;
+  let failed = 0;
+  for (const row of stalled ?? []) {
+    // Claim the row so two open tabs cannot translate (and bill) it twice.
+    const { data: claimed } = await supabaseAdmin
+      .from("messages")
+      .update({ translation_status: "retrying" })
+      .eq("id", row.id)
+      .eq("translation_status", "pending")
+      .select("id")
+      .maybeSingle();
+    if (!claimed) continue;
+    try {
+      await translateMessageForParticipants(supabaseAdmin, row.id, null);
+      recovered += 1;
+    } catch (error) {
+      failed += 1;
+      await supabaseAdmin
+        .from("messages")
+        .update({
+          translation_status: "failed",
+          translation_error:
+            error instanceof Error ? error.message : "Traduction indisponible.",
+        })
+        .eq("id", row.id);
+    }
+  }
+  return { recovered, failed };
 }

@@ -3,9 +3,11 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { formatDistanceToNowStrict } from "date-fns";
 import * as dateLocales from "date-fns/locale";
-import { MessagesSquare, Search, UserPlus } from "lucide-react";
+import { MessagesSquare, Search, UserPlus, Users } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AppShell, Avatar } from "@/components/app-shell";
+import { NewGroupSheet } from "@/components/new-group-sheet";
+
 import { useCurrentUser, useProfile } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { backfillConversation } from "@/lib/chat.functions";
@@ -30,6 +32,10 @@ export const Route = createFileRoute("/_authenticated/chats")({
 type ConversationRow = {
   id: string;
   last_message_at: string;
+  type: string;
+  name: string | null;
+  avatar_url: string | null;
+  memberCount: number;
   peer: {
     id: string;
     username: string;
@@ -39,6 +45,7 @@ type ConversationRow = {
   preview: string | null;
   needsBackfill: boolean;
 };
+
 
 function ChatsPage() {
   const { data: user } = useCurrentUser();
@@ -75,10 +82,11 @@ function ChatsPage() {
 
       const { data: conversations } = await supabase
         .from("conversations")
-        .select("id, last_message_at")
+        .select("id, last_message_at, type, name, avatar_url")
         .in("id", myIds)
         .order("last_message_at", { ascending: false })
         .limit(limit);
+
 
       const ids = (conversations ?? []).map((row) => row.id);
       if (ids.length === 0) return [];
@@ -110,6 +118,14 @@ function ChatsPage() {
       const peerByConversation = new Map(
         (participants ?? []).map((p) => [p.conversation_id, profileById.get(p.user_id) ?? null]),
       );
+      const memberCountByConversation = new Map<string, number>();
+      for (const participant of participants ?? []) {
+        memberCountByConversation.set(
+          participant.conversation_id,
+          (memberCountByConversation.get(participant.conversation_id) ?? 0) + 1,
+        );
+      }
+
       const previewByConversation = new Map<string, string>();
       const missingByConversation = new Set<string>();
       for (const message of messages ?? []) {
@@ -134,10 +150,15 @@ function ChatsPage() {
       return (conversations ?? []).map((conversation) => ({
         id: conversation.id,
         last_message_at: conversation.last_message_at,
+        type: conversation.type,
+        name: conversation.name,
+        avatar_url: conversation.avatar_url,
+        memberCount: (memberCountByConversation.get(conversation.id) ?? 0) + 1,
         peer: peerByConversation.get(conversation.id) ?? null,
         preview: previewByConversation.get(conversation.id) ?? null,
         needsBackfill: missingByConversation.has(conversation.id),
       }));
+
     },
   });
 
@@ -216,6 +237,7 @@ function ChatsPage() {
     return rows.filter(
       (row) =>
         row.peer?.username.toLowerCase().includes(needle) ||
+        row.name?.toLowerCase().includes(needle) ||
         row.preview?.toLowerCase().includes(needle),
     );
   }, [conversationsQuery.data, search]);
@@ -225,16 +247,20 @@ function ChatsPage() {
       title={t("chats.title")}
       subtitle={t("chats.subtitle")}
       action={
-        <button
-          type="button"
-          onClick={() => navigate({ to: "/friends" })}
-          className="bg-brand shadow-glow flex h-11 w-11 items-center justify-center rounded-2xl text-primary-foreground transition-transform duration-300 active:scale-90"
-          aria-label={t("chats.new")}
-        >
-          <UserPlus className="h-5 w-5" />
-        </button>
+        <div className="flex items-center gap-2">
+          {user?.id ? <NewGroupSheet userId={user.id} /> : null}
+          <button
+            type="button"
+            onClick={() => navigate({ to: "/friends" })}
+            className="bg-brand shadow-glow flex h-11 w-11 items-center justify-center rounded-2xl text-primary-foreground transition-transform duration-300 active:scale-90"
+            aria-label={t("chats.new")}
+          >
+            <UserPlus className="h-5 w-5" />
+          </button>
+        </div>
       }
     >
+
       <div className="glass mb-5 flex items-center gap-3 rounded-3xl px-4 py-3">
         <Search className="h-4 w-4 text-muted-foreground" />
         <input
@@ -255,7 +281,7 @@ function ChatsPage() {
             onClick={() => void conversationsQuery.refetch()}
             className="bg-brand mt-4 rounded-2xl px-4 py-2 text-xs font-semibold text-primary-foreground"
           >
-            Réessayer
+            {t("social.chats.retry")}
           </button>
         </div>
       ) : filtered.length === 0 ? (
@@ -274,11 +300,22 @@ function ChatsPage() {
                   params={{ conversationId: conversation.id }}
                   className="glass flex items-center gap-3 rounded-3xl p-3 transition-transform duration-300 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-primary"
                 >
-                  <Avatar name={conversation.peer?.username} url={conversation.peer?.avatar_url} />
+                  {conversation.type === "group" ? (
+                    <span className="bg-brand shadow-glow flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-primary-foreground">
+                      <Users className="h-5 w-5" />
+                    </span>
+                  ) : (
+                    <Avatar
+                      name={conversation.peer?.username}
+                      url={conversation.peer?.avatar_url}
+                    />
+                  )}
                   <div className="min-w-0 flex-1">
                     <div className="flex items-baseline justify-between gap-2">
                       <p className="truncate font-semibold">
-                        {conversation.peer?.username ?? t("chats.fallbackName")}
+                        {conversation.type === "group"
+                          ? (conversation.name ?? t("social.chats.groupFallback"))
+                          : (conversation.peer?.username ?? t("chats.fallbackName"))}
                       </p>
                       <span className="shrink-0 text-[11px] text-muted-foreground">
                         {formatDistanceToNowStrict(new Date(conversation.last_message_at), {
@@ -291,9 +328,12 @@ function ChatsPage() {
                       {conversation.preview ?? t("chats.sayHi")}
                     </p>
                     <p className="mt-0.5 text-[11px] text-muted-foreground/80">
-                      {t("chats.speaks")} {languageLabel(conversation.peer?.primary_language)}
+                      {conversation.type === "group"
+                        ? t("social.chats.participants", { count: conversation.memberCount })
+                        : `${t("chats.speaks")} ${languageLabel(conversation.peer?.primary_language)}`}
                     </p>
                   </div>
+
                 </Link>
               </li>
             ))}
@@ -305,7 +345,7 @@ function ChatsPage() {
                 onClick={() => setLimit((value) => value + 20)}
                 className="glass rounded-2xl px-4 py-2 text-xs text-muted-foreground focus-visible:ring-2 focus-visible:ring-primary"
               >
-                Charger plus de discussions
+                {t("social.chats.loadMore")}
               </button>
             </div>
           ) : null}

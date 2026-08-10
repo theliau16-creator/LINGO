@@ -13,6 +13,8 @@ import { Toaster } from "sonner";
 
 import appCss from "../styles.css?url";
 import { supabase } from "@/integrations/supabase/client";
+import { useProfile } from "@/hooks/useAuth";
+import { LocaleProvider } from "@/lib/i18n";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 
 function NotFoundComponent() {
@@ -142,9 +144,23 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <LocalizedApp />
+    </QueryClientProvider>
+  );
+}
+
+/**
+ * The account preference (profiles.primary_language) drives the whole UI
+ * language; before it loads, the provider falls back to the persisted or
+ * browser locale so there is no flash in the wrong language.
+ */
+function LocalizedApp() {
+  const { data: profile } = useProfile();
+  return (
+    <LocaleProvider preferred={profile?.primary_language ?? null}>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <Outlet />
       <Toaster position="top-center" theme="dark" />
-    </QueryClientProvider>
+    </LocaleProvider>
   );
 }

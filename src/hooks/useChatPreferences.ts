@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import { useCurrentUser } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { DEFAULT_PREFERENCES, type ChatPreferences } from "@/lib/chat-theme";
+import { savePreferences } from "@/lib/preferences.functions";
+
 
 /** Per-conversation personalisation, falling back to the user's global setting. */
 export function useChatPreferences(conversationId: string) {
@@ -36,37 +38,21 @@ export function useChatPreferences(conversationId: string) {
     mutationFn: async (patch: Partial<ChatPreferences> & { applyToAll?: boolean }) => {
       const { applyToAll, ...values } = patch;
       const next = { ...(query.data ?? DEFAULT_PREFERENCES), ...values };
-      const target = applyToAll ? null : conversationId;
 
-      // Partial unique indexes cannot be used by upsert, so resolve the row first.
-      const existing = supabase
-        .from("chat_preferences")
-        .select("id")
-        .eq("user_id", user!.id);
-      const { data: rows, error: findError } = await (target
-        ? existing.eq("conversation_id", target)
-        : existing.is("conversation_id", null));
-      if (findError) throw findError;
-
-      const rowId = rows?.[0]?.id;
-      if (rowId) {
-        const { error } = await supabase.from("chat_preferences").update(next).eq("id", rowId);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from("chat_preferences")
-          .insert({ user_id: user!.id, conversation_id: target, ...next });
-        if (error) throw error;
-      }
-
-      if (applyToAll) {
-        await supabase
-          .from("chat_preferences")
-          .delete()
-          .eq("user_id", user!.id)
-          .not("conversation_id", "is", null);
-      }
+      // Writes go through the server, which re-checks the Premium subscription.
+      await savePreferences({
+        data: {
+          conversationId,
+          background_type: next.background_type,
+          background_value: next.background_value ?? null,
+          outgoing_message_color: next.outgoing_message_color ?? null,
+          incoming_message_color: next.incoming_message_color ?? null,
+          theme: next.theme ?? "default",
+          ...(applyToAll ? { applyToAll: true } : {}),
+        },
+      });
     },
+
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["chat-preferences"] }),
   });
 

@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Globe, MessagesSquare, Sparkles } from "lucide-react";
 import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useT } from "@/lib/i18n";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -26,6 +27,7 @@ export const Route = createFileRoute("/")({
 
 function Landing() {
   const navigate = useNavigate();
+  const { t } = useT();
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -38,40 +40,39 @@ function Landing() {
       <div className="animate-rise">
         <span className="glass inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium text-muted-foreground">
           <Sparkles className="h-3.5 w-3.5 text-primary" />
-          Traduction automatique et invisible
+          {t("landing.badge")}
         </span>
 
         <h1 className="mt-8 text-6xl leading-[0.95] font-bold tracking-tight">
-          Parlez
+          {t("landing.title1")}
           <br />
-          <span className="text-brand">sans barrière.</span>
+          <span className="text-brand">{t("landing.title2")}</span>
         </h1>
 
         <p className="mt-6 max-w-sm text-lg leading-relaxed text-muted-foreground">
-          Vous écrivez en français. Votre ami lit en espagnol. Personne ne copie-colle quoi que ce
-          soit.
+          {t("landing.subtitle")}
         </p>
       </div>
 
       <div className="my-12 space-y-3">
-        <Bubble side="left" text="Bonjour, comment vas-tu ?" caption="Envoyé en français" />
-        <Bubble side="right" text="Hola ¿Cómo estás?" caption="Reçu en espagnol" />
+        <Bubble side="left" text={t("landing.bubble1")} caption={t("landing.bubble1Caption")} />
+        <Bubble side="right" text={t("landing.bubble2")} caption={t("landing.bubble2Caption")} />
       </div>
 
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
-          <Feature icon={Globe} label="20 langues" hint="Détection et traduction instantanées" />
-          <Feature icon={MessagesSquare} label="Temps réel" hint="Messages livrés déjà traduits" />
+          <Feature icon={Globe} label={t("landing.feature1Label")} hint={t("landing.feature1Hint")} />
+          <Feature icon={MessagesSquare} label={t("landing.feature2Label")} hint={t("landing.feature2Hint")} />
         </div>
 
         <Link
           to="/auth"
           className="bg-brand shadow-glow flex h-14 w-full items-center justify-center rounded-3xl text-base font-semibold text-primary-foreground transition-transform duration-300 active:scale-[0.97]"
         >
-          Commencer
+          {t("landing.cta")}
         </Link>
         <p className="text-center text-xs text-muted-foreground">
-          Google, Apple ou e-mail — en quelques secondes.
+          {t("landing.ctaHint")}
         </p>
       </div>
     </div>

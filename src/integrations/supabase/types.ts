@@ -82,6 +82,50 @@ export type Database = {
           },
         ]
       }
+      conversation_invites: {
+        Row: {
+          code: string
+          conversation_id: string | null
+          created_at: string
+          expires_at: string | null
+          id: string
+          inviter_id: string
+          max_uses: number | null
+          revoked_at: string | null
+          uses: number
+        }
+        Insert: {
+          code: string
+          conversation_id?: string | null
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          inviter_id: string
+          max_uses?: number | null
+          revoked_at?: string | null
+          uses?: number
+        }
+        Update: {
+          code?: string
+          conversation_id?: string | null
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          inviter_id?: string
+          max_uses?: number | null
+          revoked_at?: string | null
+          uses?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversation_invites_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       conversation_participants: {
         Row: {
           archived_at: string | null
@@ -120,6 +164,53 @@ export type Database = {
           },
         ]
       }
+      conversation_translation_memory: {
+        Row: {
+          conversation_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          kind: string
+          preferred_translation: string
+          source_language: string | null
+          target_language: string
+          term: string
+          updated_at: string
+        }
+        Insert: {
+          conversation_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          kind?: string
+          preferred_translation: string
+          source_language?: string | null
+          target_language: string
+          term: string
+          updated_at?: string
+        }
+        Update: {
+          conversation_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          kind?: string
+          preferred_translation?: string
+          source_language?: string | null
+          target_language?: string
+          term?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversation_translation_memory_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       conversations: {
         Row: {
           avatar_url: string | null
@@ -128,6 +219,7 @@ export type Database = {
           id: string
           last_message_at: string
           name: string | null
+          translation_memory_enabled: boolean
           type: string
         }
         Insert: {
@@ -137,6 +229,7 @@ export type Database = {
           id?: string
           last_message_at?: string
           name?: string | null
+          translation_memory_enabled?: boolean
           type?: string
         }
         Update: {
@@ -146,6 +239,7 @@ export type Database = {
           id?: string
           last_message_at?: string
           name?: string | null
+          translation_memory_enabled?: boolean
           type?: string
         }
         Relationships: []
@@ -225,6 +319,129 @@ export type Database = {
         }
         Relationships: []
       }
+      guest_users: {
+        Row: {
+          claimed_by: string | null
+          conversation_id: string
+          created_at: string
+          display_name: string
+          id: string
+          invite_id: string | null
+          language: string
+          last_seen_at: string | null
+          token_hash: string
+          updated_at: string
+        }
+        Insert: {
+          claimed_by?: string | null
+          conversation_id: string
+          created_at?: string
+          display_name: string
+          id?: string
+          invite_id?: string | null
+          language?: string
+          last_seen_at?: string | null
+          token_hash: string
+          updated_at?: string
+        }
+        Update: {
+          claimed_by?: string | null
+          conversation_id?: string
+          created_at?: string
+          display_name?: string
+          id?: string
+          invite_id?: string | null
+          language?: string
+          last_seen_at?: string | null
+          token_hash?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guest_users_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "guest_users_invite_id_fkey"
+            columns: ["invite_id"]
+            isOneToOne: false
+            referencedRelation: "conversation_invites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      link_previews: {
+        Row: {
+          description: string | null
+          fetched_at: string
+          image_url: string | null
+          site_name: string | null
+          title: string | null
+          url: string
+        }
+        Insert: {
+          description?: string | null
+          fetched_at?: string
+          image_url?: string | null
+          site_name?: string | null
+          title?: string | null
+          url: string
+        }
+        Update: {
+          description?: string | null
+          fetched_at?: string
+          image_url?: string | null
+          site_name?: string | null
+          title?: string | null
+          url?: string
+        }
+        Relationships: []
+      }
+      message_reactions: {
+        Row: {
+          conversation_id: string
+          created_at: string
+          emoji: string
+          id: string
+          message_id: string
+          user_id: string
+        }
+        Insert: {
+          conversation_id: string
+          created_at?: string
+          emoji: string
+          id?: string
+          message_id: string
+          user_id: string
+        }
+        Update: {
+          conversation_id?: string
+          created_at?: string
+          emoji?: string
+          id?: string
+          message_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_reactions_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_reactions_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       message_receipts: {
         Row: {
           created_at: string
@@ -262,28 +479,46 @@ export type Database = {
       }
       message_translations: {
         Row: {
+          alternative_translation: string | null
+          confidence_score: number | null
+          context_version: number
+          corrected_by_user: boolean
           created_at: string
           engine: string
           id: string
           language: string
           message_id: string
           translated_text: string
+          translation_provider: string | null
+          updated_at: string
         }
         Insert: {
+          alternative_translation?: string | null
+          confidence_score?: number | null
+          context_version?: number
+          corrected_by_user?: boolean
           created_at?: string
           engine?: string
           id?: string
           language: string
           message_id: string
           translated_text: string
+          translation_provider?: string | null
+          updated_at?: string
         }
         Update: {
+          alternative_translation?: string | null
+          confidence_score?: number | null
+          context_version?: number
+          corrected_by_user?: boolean
           created_at?: string
           engine?: string
           id?: string
           language?: string
           message_id?: string
           translated_text?: string
+          translation_provider?: string | null
+          updated_at?: string
         }
         Relationships: [
           {
@@ -297,46 +532,64 @@ export type Database = {
       }
       messages: {
         Row: {
+          attachments: Json
+          client_id: string | null
           conversation_id: string
           created_at: string
           deleted_at: string | null
           deleted_for: string[]
+          guest_id: string | null
           id: string
+          message_type: string
           original_text: string
           reply_to_message_id: string | null
-          sender_id: string
+          sender_id: string | null
           source_language: string
           status: string
           translation_error: string | null
           translation_status: string
+          translation_version: number
+          updated_at: string
         }
         Insert: {
+          attachments?: Json
+          client_id?: string | null
           conversation_id: string
           created_at?: string
           deleted_at?: string | null
           deleted_for?: string[]
+          guest_id?: string | null
           id?: string
+          message_type?: string
           original_text: string
           reply_to_message_id?: string | null
-          sender_id: string
+          sender_id?: string | null
           source_language?: string
           status?: string
           translation_error?: string | null
           translation_status?: string
+          translation_version?: number
+          updated_at?: string
         }
         Update: {
+          attachments?: Json
+          client_id?: string | null
           conversation_id?: string
           created_at?: string
           deleted_at?: string | null
           deleted_for?: string[]
+          guest_id?: string | null
           id?: string
+          message_type?: string
           original_text?: string
           reply_to_message_id?: string | null
-          sender_id?: string
+          sender_id?: string | null
           source_language?: string
           status?: string
           translation_error?: string | null
           translation_status?: string
+          translation_version?: number
+          updated_at?: string
         }
         Relationships: [
           {
@@ -344,6 +597,13 @@ export type Database = {
             columns: ["conversation_id"]
             isOneToOne: false
             referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_guest_id_fkey"
+            columns: ["guest_id"]
+            isOneToOne: false
+            referencedRelation: "guest_users"
             referencedColumns: ["id"]
           },
           {
@@ -415,6 +675,27 @@ export type Database = {
         }
         Relationships: []
       }
+      rate_limits: {
+        Row: {
+          bucket: string
+          count: number
+          updated_at: string
+          window_start: string
+        }
+        Insert: {
+          bucket: string
+          count?: number
+          updated_at?: string
+          window_start: string
+        }
+        Update: {
+          bucket?: string
+          count?: number
+          updated_at?: string
+          window_start?: string
+        }
+        Relationships: []
+      }
       subscriptions: {
         Row: {
           cancel_at_period_end: boolean | null
@@ -462,6 +743,89 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      translation_corrections: {
+        Row: {
+          conversation_id: string
+          corrected_translation: string
+          created_at: string
+          id: string
+          message_id: string
+          original_text: string
+          previous_translation: string | null
+          source_language: string
+          target_language: string
+          user_id: string
+        }
+        Insert: {
+          conversation_id: string
+          corrected_translation: string
+          created_at?: string
+          id?: string
+          message_id: string
+          original_text: string
+          previous_translation?: string | null
+          source_language: string
+          target_language: string
+          user_id: string
+        }
+        Update: {
+          conversation_id?: string
+          corrected_translation?: string
+          created_at?: string
+          id?: string
+          message_id?: string
+          original_text?: string
+          previous_translation?: string | null
+          source_language?: string
+          target_language?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "translation_corrections_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "translation_corrections_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      translation_jobs: {
+        Row: {
+          attempts: number
+          claimed_at: string
+          language: string
+          message_id: string
+        }
+        Insert: {
+          attempts?: number
+          claimed_at?: string
+          language: string
+          message_id: string
+        }
+        Update: {
+          attempts?: number
+          claimed_at?: string
+          language?: string
+          message_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "translation_jobs_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       translation_logs: {
         Row: {
@@ -613,6 +977,69 @@ export type Database = {
         }
         Relationships: []
       }
+      voice_messages: {
+        Row: {
+          attempt_count: number
+          audio_path: string
+          conversation_id: string
+          created_at: string
+          duration_ms: number | null
+          id: string
+          message_id: string
+          processing_started_at: string | null
+          transcript: string | null
+          transcript_language: string | null
+          transcription_error: string | null
+          transcription_status: string
+          updated_at: string
+        }
+        Insert: {
+          attempt_count?: number
+          audio_path: string
+          conversation_id: string
+          created_at?: string
+          duration_ms?: number | null
+          id?: string
+          message_id: string
+          processing_started_at?: string | null
+          transcript?: string | null
+          transcript_language?: string | null
+          transcription_error?: string | null
+          transcription_status?: string
+          updated_at?: string
+        }
+        Update: {
+          attempt_count?: number
+          audio_path?: string
+          conversation_id?: string
+          created_at?: string
+          duration_ms?: number | null
+          id?: string
+          message_id?: string
+          processing_started_at?: string | null
+          transcript?: string | null
+          transcript_language?: string | null
+          transcription_error?: string | null
+          transcription_status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "voice_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "voice_messages_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: true
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -622,12 +1049,41 @@ export type Database = {
         Args: { _request_id: string }
         Returns: undefined
       }
+      check_rate_limit: {
+        Args: { _bucket: string; _limit: number; _window_seconds: number }
+        Returns: {
+          allowed: boolean
+          remaining: number
+          retry_after: number
+        }[]
+      }
+      claim_invite_use: { Args: { _invite_id: string }; Returns: boolean }
+      claim_translation_slot: {
+        Args: {
+          _language: string
+          _message_id: string
+          _stale_seconds?: number
+        }
+        Returns: boolean
+      }
+      claim_voice_job: {
+        Args: { _message_id: string; _stale_seconds?: number }
+        Returns: boolean
+      }
+      consume_translation_quota: {
+        Args: { _amount?: number; _user_id: string }
+        Returns: number
+      }
       conversation_has_block: {
         Args: { _conversation_id: string; _sender_id: string }
         Returns: boolean
       }
       create_direct_conversation: {
         Args: { _friend_id: string }
+        Returns: string
+      }
+      create_group_conversation: {
+        Args: { _member_ids: string[]; _name: string }
         Returns: string
       }
       has_active_subscription: {
@@ -643,6 +1099,26 @@ export type Database = {
       }
       is_participant: {
         Args: { _conversation_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_premium_user: { Args: { _user_id: string }; Returns: boolean }
+      purge_rate_limits: { Args: never; Returns: undefined }
+      release_translation_slot: {
+        Args: { _language: string; _message_id: string }
+        Returns: undefined
+      }
+      search_profiles: {
+        Args: { _query: string }
+        Returns: {
+          avatar_url: string
+          country: string
+          id: string
+          primary_language: string
+          username: string
+        }[]
+      }
+      shares_conversation: {
+        Args: { _a: string; _b: string }
         Returns: boolean
       }
       show_limit: { Args: never; Returns: number }

@@ -8,14 +8,15 @@ import { useCurrentUser } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { haptic } from "@/lib/chat-theme";
 import { LANGUAGES, languageFlag, languageLabel } from "@/lib/languages";
+import { useT } from "@/lib/i18n";
 
-type Feature = { label: string; hint: string; to: string; icon: typeof Settings };
+type Feature = { labelKey: "social.search.featureFriends" | "social.search.featureChats" | "social.search.featureSettings" | "social.search.featureQr"; hintKey: "social.search.featureFriendsHint" | "social.search.featureChatsHint" | "social.search.featureSettingsHint" | "social.search.featureQrHint"; to: string; icon: typeof Settings };
 
 const FEATURES: Feature[] = [
-  { label: "Amis", hint: "Demandes et contacts", to: "/friends", icon: Users },
-  { label: "Discussions", hint: "Toutes vos conversations", to: "/chats", icon: MessageCircle },
-  { label: "Réglages", hint: "Moteur de traduction", to: "/settings", icon: Settings },
-  { label: "Mon QR code", hint: "Partager mon profil", to: "/profile", icon: QrCode },
+  { labelKey: "social.search.featureFriends", hintKey: "social.search.featureFriendsHint", to: "/friends", icon: Users },
+  { labelKey: "social.search.featureChats", hintKey: "social.search.featureChatsHint", to: "/chats", icon: MessageCircle },
+  { labelKey: "social.search.featureSettings", hintKey: "social.search.featureSettingsHint", to: "/settings", icon: Settings },
+  { labelKey: "social.search.featureQr", hintKey: "social.search.featureQrHint", to: "/profile", icon: QrCode },
 ];
 
 function useDebounced(value: string, delay = 250) {
@@ -29,6 +30,7 @@ function useDebounced(value: string, delay = 250) {
 
 /** Global search over people, conversations, languages and app features. */
 export function GlobalSearch({ onOpenQr }: { onOpenQr?: () => void }) {
+  const { t } = useT();
   const { data: user } = useCurrentUser();
   const navigate = useNavigate();
   const [term, setTerm] = useState("");
@@ -40,14 +42,10 @@ export function GlobalSearch({ onOpenQr }: { onOpenQr?: () => void }) {
     queryKey: ["search-people", needle, user?.id],
     enabled: active && needle.length >= 2 && Boolean(user?.id),
     queryFn: async () => {
-      const { data } = await supabase
-        .from("profiles")
-        .select("id, username, avatar_url, primary_language, phone")
-        .or(`username.ilike.%${needle}%,phone.ilike.%${needle}%`)
-        .neq("id", user!.id)
-        .limit(8);
-      return data ?? [];
+      const { data } = await supabase.rpc("search_profiles", { _query: needle });
+      return (data ?? []).slice(0, 8);
     },
+
   });
 
   const conversationsQuery = useQuery({
@@ -102,9 +100,9 @@ export function GlobalSearch({ onOpenQr }: { onOpenQr?: () => void }) {
   const features = useMemo(
     () =>
       active
-        ? FEATURES.filter((item) => item.label.toLowerCase().includes(needle.toLowerCase()))
+        ? FEATURES.filter((item) => t(item.labelKey).toLowerCase().includes(needle.toLowerCase()))
         : [],
-    [active, needle],
+    [active, needle, t],
   );
 
   const people = peopleQuery.data ?? [];
@@ -118,15 +116,15 @@ export function GlobalSearch({ onOpenQr }: { onOpenQr?: () => void }) {
         <input
           value={term}
           onChange={(event) => setTerm(event.target.value)}
-          placeholder="Rechercher…"
-          aria-label="Rechercher"
+          placeholder={t("social.search.placeholder")}
+          aria-label={t("social.search.ariaSearch")}
           className="w-full bg-transparent text-[15px] outline-none placeholder:text-muted-foreground/70"
         />
         {term ? (
           <button
             type="button"
             onClick={() => setTerm("")}
-            aria-label="Effacer"
+            aria-label={t("social.search.ariaClear")}
             className="text-muted-foreground"
           >
             <X className="h-4 w-4" />
@@ -139,7 +137,7 @@ export function GlobalSearch({ onOpenQr }: { onOpenQr?: () => void }) {
               haptic();
               onOpenQr();
             }}
-            aria-label="Scanner un QR code"
+            aria-label={t("social.search.ariaScanQr")}
             className="text-muted-foreground"
           >
             <QrCode className="h-4 w-4" />
@@ -150,7 +148,7 @@ export function GlobalSearch({ onOpenQr }: { onOpenQr?: () => void }) {
       {active ? (
         <div className="animate-rise mt-3 space-y-4">
           {people.length > 0 ? (
-            <Group title="Personnes">
+            <Group title={t("social.search.groupPeople")}>
               {people.map((person) => (
                 <div key={person.id} className="glass flex items-center gap-3 rounded-3xl px-4 py-3">
                   <Avatar name={person.username} url={person.avatar_url} size={40} />
@@ -167,7 +165,7 @@ export function GlobalSearch({ onOpenQr }: { onOpenQr?: () => void }) {
           ) : null}
 
           {conversations.length > 0 ? (
-            <Group title="Conversations">
+            <Group title={t("social.search.groupConversations")}>
               {conversations.map((item) => (
                 <button
                   key={item.conversationId}
@@ -186,7 +184,7 @@ export function GlobalSearch({ onOpenQr }: { onOpenQr?: () => void }) {
                       {item.profile?.username}
                     </span>
                     <span className="block text-[11px] text-muted-foreground">
-                      Ouvrir la conversation
+                      {t("social.search.openConversation")}
                     </span>
                   </span>
                   <MessageCircle className="h-4 w-4 text-muted-foreground" />
@@ -196,7 +194,7 @@ export function GlobalSearch({ onOpenQr }: { onOpenQr?: () => void }) {
           ) : null}
 
           {languages.length > 0 ? (
-            <Group title="Langues">
+            <Group title={t("social.search.groupLanguages")}>
               {languages.map((language) => (
                 <div
                   key={language.code}
@@ -211,12 +209,12 @@ export function GlobalSearch({ onOpenQr }: { onOpenQr?: () => void }) {
           ) : null}
 
           {features.length > 0 ? (
-            <Group title="Fonctionnalités">
+            <Group title={t("social.search.groupFeatures")}>
               {features.map((feature) => {
                 const Icon = feature.icon;
                 return (
                   <button
-                    key={feature.label}
+                    key={feature.labelKey}
                     type="button"
                     onClick={() => navigate({ to: feature.to })}
                     className="glass flex w-full items-center gap-3 rounded-3xl px-4 py-3 text-left active:scale-[0.98]"
@@ -225,8 +223,8 @@ export function GlobalSearch({ onOpenQr }: { onOpenQr?: () => void }) {
                       <Icon className="h-4 w-4" />
                     </span>
                     <span className="flex-1">
-                      <span className="block text-sm font-semibold">{feature.label}</span>
-                      <span className="block text-[11px] text-muted-foreground">{feature.hint}</span>
+                      <span className="block text-sm font-semibold">{t(feature.labelKey)}</span>
+                      <span className="block text-[11px] text-muted-foreground">{t(feature.hintKey)}</span>
                     </span>
                   </button>
                 );
@@ -236,7 +234,7 @@ export function GlobalSearch({ onOpenQr }: { onOpenQr?: () => void }) {
 
           {empty ? (
             <p className="flex items-center gap-2 px-1 text-sm text-muted-foreground">
-              <UserPlus className="h-4 w-4" /> Aucun résultat pour « {debounced} ».
+              <UserPlus className="h-4 w-4" /> {t("social.search.noResults", { term: debounced })}
             </p>
           ) : null}
         </div>

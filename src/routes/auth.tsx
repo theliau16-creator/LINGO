@@ -6,6 +6,7 @@ import { PhoneAuth } from "@/components/phone-auth";
 import { QrScanner } from "@/components/qr-scanner";
 import { redeemDeviceLinkToken } from "@/lib/device-link.functions";
 import { supabase } from "@/integrations/supabase/client";
+import { useT } from "@/lib/i18n";
 
 export const Route = createFileRoute("/auth")({
   validateSearch: (s: Record<string, unknown>): { next?: string } => {
@@ -31,6 +32,7 @@ export const Route = createFileRoute("/auth")({
 
 function AuthPage() {
   const navigate = useNavigate();
+  const { t } = useT();
   const { next } = Route.useSearch();
   const goAfterAuth = () => {
     if (next) {
@@ -51,7 +53,7 @@ function AuthPage() {
 
   async function handleQrResult(value: string) {
     if (!value.startsWith("lingo:login:")) {
-      toast.error("QR code invalide", { description: "Ce code ne permet pas de se connecter." });
+      toast.error(t("auth.qrInvalidTitle"), { description: t("auth.qrInvalidDesc") });
       setQrMode(false);
       return;
     }
@@ -67,8 +69,8 @@ function AuthPage() {
       if (error) throw error;
       goAfterAuth();
     } catch (error) {
-      toast.error("Connexion par QR impossible", {
-        description: error instanceof Error ? error.message : "Réessayez avec un nouveau code.",
+      toast.error(t("auth.qrFailedTitle"), {
+        description: error instanceof Error ? error.message : t("auth.qrFailedFallback"),
       });
       setQrMode(false);
     } finally {
@@ -84,7 +86,7 @@ function AuthPage() {
     });
     if (error) {
       setLoading(false);
-      toast.error("Connexion impossible", { description: error.message });
+      toast.error(t("auth.oauthFailedTitle"), { description: error.message });
       return;
     }
     // signInWithOAuth redirects the browser away; nothing more to do here.
@@ -105,8 +107,8 @@ function AuthPage() {
         });
         if (error) throw error;
         if (!data.session) {
-          toast.success("Vérifiez vos e-mails", {
-            description: "Confirmez votre adresse pour activer votre compte.",
+          toast.success(t("auth.checkEmailTitle"), {
+            description: t("auth.checkEmailDesc"),
           });
           return;
         }
@@ -116,8 +118,8 @@ function AuthPage() {
       }
       goAfterAuth();
     } catch (error) {
-      toast.error("Échec", {
-        description: error instanceof Error ? error.message : "Réessayez.",
+      toast.error(t("auth.failedTitle"), {
+        description: error instanceof Error ? error.message : t("auth.failedFallback"),
       });
     } finally {
       setLoading(false);
@@ -135,16 +137,16 @@ function AuthPage() {
           <ArrowLeft className="h-4 w-4" />
         </button>
         <div className="animate-rise mt-8">
-          <h2 className="text-3xl font-bold tracking-tight">Scanner le QR code</h2>
+          <h2 className="text-3xl font-bold tracking-tight">{t("auth.scanQrTitle")}</h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            Ouvrez Lingo sur votre appareil connecté, puis « Connecter un autre appareil ».
+            {t("auth.scanQrHint")}
           </p>
           <div className="mt-6">
             <QrScanner onResult={(value) => void handleQrResult(value)} />
           </div>
           {loading ? (
             <p className="mt-4 flex items-center justify-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" /> Connexion en cours…
+              <Loader2 className="h-4 w-4 animate-spin" /> {t("auth.signingIn")}
             </p>
           ) : null}
         </div>
@@ -171,12 +173,12 @@ function AuthPage() {
 
       <div className="animate-rise mt-10">
         <h1 className="text-4xl font-bold tracking-tight">
-          {mode === "signin" ? "Bon retour" : "Créer un compte"}
+          {mode === "signin" ? t("auth.welcomeBack") : t("auth.createAccount")}
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
           {mode === "signin"
-            ? "Reprenez vos conversations là où vous les avez laissées."
-            : "Choisissez votre langue, on s'occupe du reste."}
+            ? t("auth.signinSubtitle")
+            : t("auth.signupSubtitle")}
         </p>
       </div>
 
@@ -187,7 +189,7 @@ function AuthPage() {
           onClick={() => handleOAuth("google")}
           className="glass-strong flex h-14 w-full items-center justify-center gap-3 rounded-3xl text-[15px] font-semibold transition-transform duration-300 active:scale-[0.97] disabled:opacity-60"
         >
-          <GoogleMark /> Continuer avec Google
+          <GoogleMark /> {t("auth.continueWithGoogle")}
         </button>
         <button
           type="button"
@@ -195,7 +197,7 @@ function AuthPage() {
           onClick={() => handleOAuth("apple")}
           className="glass-strong flex h-14 w-full items-center justify-center gap-3 rounded-3xl text-[15px] font-semibold transition-transform duration-300 active:scale-[0.97] disabled:opacity-60"
         >
-          <AppleMark /> Continuer avec Apple
+          <AppleMark /> {t("auth.continueWithApple")}
         </button>
         <button
           type="button"
@@ -203,7 +205,7 @@ function AuthPage() {
           onClick={() => setPhoneMode(true)}
           className="glass-strong flex h-14 w-full items-center justify-center gap-3 rounded-3xl text-[15px] font-semibold transition-transform duration-300 active:scale-[0.97] disabled:opacity-60"
         >
-          <Phone className="h-5 w-5" /> Continuer avec mon numéro
+          <Phone className="h-5 w-5" /> {t("auth.continueWithPhone")}
         </button>
         <button
           type="button"
@@ -211,35 +213,35 @@ function AuthPage() {
           onClick={() => setQrMode(true)}
           className="glass-strong flex h-14 w-full items-center justify-center gap-3 rounded-3xl text-[15px] font-semibold transition-transform duration-300 active:scale-[0.97] disabled:opacity-60"
         >
-          <QrCode className="h-5 w-5" /> Se connecter avec un QR code
+          <QrCode className="h-5 w-5" /> {t("auth.signInWithQr")}
         </button>
       </div>
 
       <div className="my-7 flex items-center gap-4 text-[11px] tracking-widest text-muted-foreground uppercase">
-        <span className="h-px flex-1 bg-border" /> ou <span className="h-px flex-1 bg-border" />
+        <span className="h-px flex-1 bg-border" /> {t("auth.or")} <span className="h-px flex-1 bg-border" />
       </div>
 
       <form onSubmit={handleEmail} className="space-y-3">
         {mode === "signup" ? (
           <Field
-            label="Pseudo"
+            label={t("auth.nickname")}
             value={username}
             onChange={setUsername}
-            placeholder="lucas"
+            placeholder={t("auth.nicknamePlaceholder")}
             autoComplete="nickname"
           />
         ) : null}
         <Field
-          label="E-mail"
+          label={t("auth.email")}
           type="email"
           value={email}
           onChange={setEmail}
-          placeholder="vous@exemple.com"
+          placeholder={t("auth.emailPlaceholder")}
           autoComplete="email"
           required
         />
         <Field
-          label="Mot de passe"
+          label={t("auth.password")}
           type="password"
           value={password}
           onChange={setPassword}
@@ -254,7 +256,7 @@ function AuthPage() {
           className="bg-brand shadow-glow flex h-14 w-full items-center justify-center gap-2 rounded-3xl text-base font-semibold text-primary-foreground transition-transform duration-300 active:scale-[0.97] disabled:opacity-60"
         >
           {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-          {mode === "signin" ? "Se connecter" : "Créer mon compte"}
+          {mode === "signin" ? t("auth.signIn") : t("auth.createMyAccount")}
         </button>
 
         {mode === "signin" ? (
@@ -262,28 +264,27 @@ function AuthPage() {
             type="button"
             onClick={async () => {
               if (!email.trim()) {
-                toast.error("Entrez votre e-mail", {
-                  description: "Nous y enverrons le lien de réinitialisation.",
+                toast.error(t("auth.enterEmailTitle"), {
+                  description: t("auth.enterEmailDesc"),
                 });
                 return;
               }
               const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-                redirectTo: `${window.location.origin}/auth`,
+                redirectTo: `${window.location.origin}/reset-password`,
               });
               if (error) {
-                toast.error("Envoi impossible", {
-                  description: "Réessayez dans quelques minutes.",
+                toast.error(t("auth.resetSendFailedTitle"), {
+                  description: t("auth.resetSendFailedDesc"),
                 });
                 return;
               }
-              toast.success("E-mail envoyé", {
-                description:
-                  "Consultez votre boîte de réception pour choisir un nouveau mot de passe.",
+              toast.success(t("auth.resetSentTitle"), {
+                description: t("auth.resetSentDesc"),
               });
             }}
             className="mt-3 w-full text-center text-xs text-muted-foreground underline-offset-4 hover:underline"
           >
-            Mot de passe oublié ?
+            {t("auth.forgotPassword")}
           </button>
         ) : null}
       </form>
@@ -295,12 +296,12 @@ function AuthPage() {
       >
         {mode === "signin" ? (
           <>
-            Pas encore de compte ?{" "}
-            <span className="font-semibold text-foreground">Inscrivez-vous</span>
+            {t("auth.noAccountYet")}{" "}
+            <span className="font-semibold text-foreground">{t("auth.signUpCta")}</span>
           </>
         ) : (
           <>
-            Déjà inscrit ? <span className="font-semibold text-foreground">Connectez-vous</span>
+            {t("auth.alreadyRegistered")} <span className="font-semibold text-foreground">{t("auth.signInCta")}</span>
           </>
         )}
       </button>

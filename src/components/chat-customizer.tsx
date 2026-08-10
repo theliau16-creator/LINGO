@@ -3,6 +3,7 @@ import { Check, Image as ImageIcon, Loader2, Palette, RotateCcw, Sparkles } from
 import { useRef, useState } from "react";
 import { HexColorPicker } from "react-colorful";
 import { toast } from "sonner";
+import { useT } from "@/lib/i18n";
 import { BottomSheet } from "@/components/bottom-sheet";
 import { PremiumUpsell } from "@/components/premium-upsell";
 import { useCurrentUser } from "@/hooks/useAuth";
@@ -34,6 +35,7 @@ export function ChatCustomizer({
   conversationId: string;
   previewUrl: string | null;
 }) {
+  const { t } = useT();
   const { data: user } = useCurrentUser();
   const { preferences, save, reset } = useChatPreferences(conversationId);
   const subscription = useSubscription();
@@ -59,8 +61,8 @@ export function ChatCustomizer({
     },
     onSuccess: (path) => apply({ background_type: "photo", background_value: path }),
     onError: (error) =>
-      toast.error("Import impossible", {
-        description: error instanceof Error ? error.message : "Réessayez.",
+      toast.error(t("media.importFailed"), {
+        description: error instanceof Error ? error.message : t("media.retryLater"),
       }),
   });
 
@@ -69,17 +71,17 @@ export function ChatCustomizer({
 
   if (!subscription.isLoading && !subscription.isPremium) {
     return (
-      <BottomSheet open={open} onClose={onClose} title="Personnaliser le chat">
+      <BottomSheet open={open} onClose={onClose} title={t("media.customizeChat")}>
         <PremiumUpsell
-          title="La personnalisation est réservée à Premium"
-          description="Thèmes de chat, couleurs de bulles et arrière-plans personnalisés sont inclus dans Lingo Premium."
+          title={t("media.premiumTitle")}
+          description={t("media.premiumDescription")}
         />
       </BottomSheet>
     );
   }
 
   return (
-    <BottomSheet open={open} onClose={onClose} title="Personnaliser le chat">
+    <BottomSheet open={open} onClose={onClose} title={t("media.customizeChat")}>
       <div
         className="mb-4 space-y-2 rounded-3xl border border-border/40 p-4"
         style={backgroundStyle(preferences, previewUrl)}
@@ -89,7 +91,7 @@ export function ChatCustomizer({
             className="rounded-3xl rounded-bl-lg px-3.5 py-2 text-sm"
             style={{ background: incoming, color: readableTextColor(incoming) }}
           >
-            Hola, ¿cómo estás?
+            {t("media.demoIncoming")}
           </span>
         </div>
         <div className="flex justify-end">
@@ -97,7 +99,7 @@ export function ChatCustomizer({
             className="rounded-3xl rounded-br-lg px-3.5 py-2 text-sm"
             style={{ background: outgoing, color: readableTextColor(outgoing) }}
           >
-            Très bien, merci !
+            {t("media.demoOutgoing")}
           </span>
         </div>
       </div>
@@ -105,9 +107,9 @@ export function ChatCustomizer({
       <div className="mb-4 flex gap-2">
         {(
           [
-            { id: "theme", label: "Thèmes", icon: Sparkles },
-            { id: "background", label: "Fond", icon: ImageIcon },
-            { id: "bubbles", label: "Bulles", icon: Palette },
+            { id: "theme", label: t("media.tabThemes"), icon: Sparkles },
+            { id: "background", label: t("media.tabBackground"), icon: ImageIcon },
+            { id: "bubbles", label: t("media.tabBubbles"), icon: Palette },
           ] as const
         ).map((item) => {
           const Icon = item.icon;
@@ -174,7 +176,7 @@ export function ChatCustomizer({
 
       {tab === "background" ? (
         <div className="space-y-4">
-          <Group title="Couleur unie">
+          <Group title={t("media.solidColor")}>
             <div className="flex flex-wrap gap-2">
               {SOLID_BACKGROUNDS.map((color) => (
                 <Swatch
@@ -186,7 +188,7 @@ export function ChatCustomizer({
               ))}
             </div>
           </Group>
-          <Group title="Dégradés">
+          <Group title={t("media.gradients")}>
             <div className="flex flex-wrap gap-2">
               {GRADIENT_BACKGROUNDS.map((gradient) => (
                 <Swatch
@@ -200,7 +202,7 @@ export function ChatCustomizer({
               ))}
             </div>
           </Group>
-          <Group title="Images Lingo">
+          <Group title={t("media.lingoImages")}>
             <div className="grid grid-cols-4 gap-2">
               {IMAGE_BACKGROUNDS.map((image) => (
                 <button
@@ -219,7 +221,7 @@ export function ChatCustomizer({
               ))}
             </div>
           </Group>
-          <Group title="Ma photo">
+          <Group title={t("media.myPhoto")}>
             <input
               ref={fileRef}
               type="file"
@@ -239,7 +241,7 @@ export function ChatCustomizer({
               className="glass flex w-full items-center justify-center gap-2 rounded-2xl py-3 text-sm font-semibold active:scale-95 disabled:opacity-60"
             >
               {upload.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImageIcon className="h-4 w-4" />}
-              Galerie ou caméra
+              {t("media.galleryOrCamera")}
             </button>
           </Group>
         </div>
@@ -247,7 +249,7 @@ export function ChatCustomizer({
 
       {tab === "bubbles" ? (
         <div className="space-y-4">
-          <Group title="Mes messages">
+          <Group title={t("media.myMessages")}>
             <ColorRow
               value={outgoing}
               onPick={(color) => apply({ outgoing_message_color: color })}
@@ -263,7 +265,7 @@ export function ChatCustomizer({
               </div>
             ) : null}
           </Group>
-          <Group title="Messages reçus">
+          <Group title={t("media.receivedMessages")}>
             <ColorRow
               value={incoming}
               onPick={(color) => apply({ incoming_message_color: color })}
@@ -280,7 +282,7 @@ export function ChatCustomizer({
             ) : null}
           </Group>
           <p className="px-1 text-xs text-muted-foreground">
-            La couleur du texte s'ajuste automatiquement pour rester lisible.
+            {t("media.textColorHint")}
           </p>
         </div>
       ) : null}
@@ -294,17 +296,17 @@ export function ChatCustomizer({
           }}
           className="glass flex flex-1 items-center justify-center gap-2 rounded-2xl py-3 text-sm font-semibold text-muted-foreground active:scale-95"
         >
-          <RotateCcw className="h-4 w-4" /> Réinitialiser
+          <RotateCcw className="h-4 w-4" /> {t("media.reset")}
         </button>
         <button
           type="button"
           onClick={() => {
             apply({}, true);
-            toast.success("Appliqué à toutes vos conversations");
+            toast.success(t("media.appliedToAll"));
           }}
           className="bg-brand shadow-glow flex flex-1 items-center justify-center gap-2 rounded-2xl py-3 text-sm font-semibold text-primary-foreground active:scale-95"
         >
-          <Check className="h-4 w-4" /> Tout appliquer
+          <Check className="h-4 w-4" /> {t("media.applyAll")}
         </button>
       </div>
     </BottomSheet>
@@ -331,12 +333,13 @@ function Swatch({
   active: boolean;
   onClick: () => void;
 }) {
+  const { t } = useT();
   return (
     <button
       type="button"
       onClick={onClick}
       style={style}
-      aria-label="Couleur"
+      aria-label={t("media.color")}
       className={`h-11 w-11 rounded-2xl transition-transform duration-300 active:scale-90 ${
         active ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""
       }`}
@@ -353,6 +356,7 @@ function ColorRow({
   onPick: (color: string) => void;
   onCustom: () => void;
 }) {
+  const { t } = useT();
   return (
     <div className="flex flex-wrap gap-2">
       {BUBBLE_COLORS.map((color) => (
@@ -366,7 +370,7 @@ function ColorRow({
       <button
         type="button"
         onClick={onCustom}
-        aria-label="Couleur personnalisée"
+        aria-label={t("media.customColor")}
         className="h-11 w-11 rounded-2xl bg-[conic-gradient(from_0deg,#ef4444,#f59e0b,#22c55e,#3b82f6,#a855f7,#ef4444)] transition-transform active:scale-90"
       />
     </div>

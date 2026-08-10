@@ -44,7 +44,10 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
         productDescription = (product as { name?: string }).name;
       }
 
-      const session = await stripe.checkout.sessions.create({
+      // Dynamic Payment Methods : on ne force jamais payment_method_types.
+      // Stripe affiche automatiquement carte, Link, Apple Pay, Google Pay et
+      // PayPal selon l'éligibilité du compte, de la devise et de l'appareil.
+      const params = {
         line_items: [{ price: stripePrice.id, quantity: 1 }],
         mode: isRecurring ? "subscription" : "payment",
         ui_mode: "embedded_page",
@@ -57,11 +60,21 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
               ...(isRecurring ? { subscription_data: { metadata: { userId: data.userId } } } : {}),
             }
           : {}),
-        managed_payments: { enabled: true },
-      } as any);
+        // Prix TTC : Stripe calcule et collecte la TVA incluse dans le montant affiché.
+        automatic_tax: { enabled: true },
+        // automatic_tax exige une adresse : on la collecte au checkout et on
+        // la sauvegarde sur le Customer.
+        billing_address_collection: "auto",
+        ...(customerId ? { customer_update: { address: "auto", name: "auto" } } : {}),
+      };
 
-      return { clientSecret: session.client_secret ?? "" };
+      const session = await stripe.checkout.sessions.create(params as any);
+      if (!session.client_secret) throw new Error("Stripe n'a pas renvoyé de client_secret");
+
+      return { clientSecret: session.client_secret };
     } catch (error) {
+      console.error("[stripe] createCheckoutSession failed:", getStripeErrorMessage(error));
       return { error: getStripeErrorMessage(error) };
     }
+
   });

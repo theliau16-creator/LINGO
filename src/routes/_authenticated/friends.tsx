@@ -79,14 +79,10 @@ function FriendsPage() {
     queryKey: ["user-search", term, user?.id],
     enabled: term.trim().length >= 2 && Boolean(user?.id),
     queryFn: async () => {
-      const { data } = await supabase
-        .from("profiles")
-        .select("id, username, avatar_url, primary_language")
-        .ilike("username", `%${term.trim()}%`)
-        .neq("id", user!.id)
-        .limit(10);
-      return data ?? [];
+      const { data } = await supabase.rpc("search_profiles", { _query: term.trim() });
+      return (data ?? []).slice(0, 10);
     },
+
   });
 
   const answerRequest = useMutation({
