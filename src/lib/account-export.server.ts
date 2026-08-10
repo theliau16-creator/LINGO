@@ -10,7 +10,14 @@ type Client = SupabaseClient<Database>;
 export async function exportAccountData(supabase: Client, userId: string) {
   const [profile, settings, preferences, friends, participants, messages, corrections, usage] =
     await Promise.all([
-      supabase.from("profiles").select("*").eq("id", userId).maybeSingle(),
+      // `phone` is deliberately excluded: it is not readable through the Data API.
+      supabase
+        .from("profiles")
+        .select(
+          "id, username, avatar_url, primary_language, secondary_language, country, status, created_at, updated_at",
+        )
+        .eq("id", userId)
+        .maybeSingle(),
       supabase.from("user_settings").select("*").eq("user_id", userId).maybeSingle(),
       supabase.from("chat_preferences").select("*").eq("user_id", userId),
       supabase.from("friendships").select("friend_id, created_at").eq("user_id", userId),
