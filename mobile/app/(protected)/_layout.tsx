@@ -19,6 +19,7 @@ export default function ProtectedLayout() {
 
       <Stack.Protected guard={!needsOnboarding}>
         <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="chat/[conversationId]" options={{ headerShown: true, title: "" }} />
       </Stack.Protected>
     </Stack>
   );

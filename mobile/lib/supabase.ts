@@ -2,6 +2,7 @@ import "react-native-url-polyfill/auto";
 import { AppState } from "react-native";
 import { createClient, processLock } from "@supabase/supabase-js";
 import { secureStoreAdapter } from "./secure-store-adapter";
+import type { Database } from "./database.types";
 
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const supabasePublishableKey = process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -14,7 +15,7 @@ if (!supabaseUrl || !supabasePublishableKey) {
 
 // Same Supabase project as the web app — public URL + publishable key only,
 // never a service role key (see mobile/.env.example).
-export const supabase = createClient(supabaseUrl, supabasePublishableKey, {
+export const supabase = createClient<Database>(supabaseUrl, supabasePublishableKey, {
   auth: {
     storage: secureStoreAdapter,
     autoRefreshToken: true,
