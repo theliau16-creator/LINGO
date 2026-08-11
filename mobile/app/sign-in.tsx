@@ -1,6 +1,10 @@
 import { useState } from "react";
-import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Alert, Text, View } from "react-native";
+import { Link } from "expo-router";
 import { supabase } from "@/lib/supabase";
+import { Screen } from "@/components/screen";
+import { Button } from "@/components/ui/button";
+import { TextField } from "@/components/ui/text-field";
 
 export default function SignIn() {
   const [email, setEmail] = useState("");
@@ -17,78 +21,43 @@ export default function SignIn() {
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Lingo</Text>
+    <Screen>
+      <View className="flex-1 justify-center gap-3">
+        <Text className="mb-6 text-center text-[32px] font-bold text-foreground">Lingo</Text>
 
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        placeholderTextColor="#8892a0"
-        autoCapitalize="none"
-        autoComplete="email"
-        keyboardType="email-address"
-        value={email}
-        onChangeText={setEmail}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Mot de passe"
-        placeholderTextColor="#8892a0"
-        autoCapitalize="none"
-        autoComplete="password"
-        secureTextEntry
-        value={password}
-        onChangeText={setPassword}
-      />
+        <TextField
+          placeholder="Email"
+          autoCapitalize="none"
+          autoComplete="email"
+          keyboardType="email-address"
+          value={email}
+          onChangeText={setEmail}
+        />
+        <TextField
+          placeholder="Mot de passe"
+          autoCapitalize="none"
+          autoComplete="password"
+          secureTextEntry
+          value={password}
+          onChangeText={setPassword}
+        />
 
-      <TouchableOpacity
-        style={[styles.button, (loading || !email || !password) && styles.buttonDisabled]}
-        onPress={handleSignIn}
-        disabled={loading || !email || !password}
-      >
-        <Text style={styles.buttonText}>{loading ? "Connexion…" : "Se connecter"}</Text>
-      </TouchableOpacity>
-    </View>
+        <Link href="/forgot-password" className="mt-1 self-end text-[13px] text-muted-foreground">
+          Mot de passe oublié ?
+        </Link>
+
+        <Button
+          label={loading ? "Connexion…" : "Se connecter"}
+          loading={loading}
+          disabled={!email || !password}
+          onPress={handleSignIn}
+          className="mt-3"
+        />
+
+        <Link href="/sign-up" className="mt-6 text-center text-[14px] text-muted-foreground">
+          Pas de compte ? <Text className="font-semibold text-primary">Créer un compte</Text>
+        </Link>
+      </View>
+    </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: "center",
-    padding: 24,
-    gap: 12,
-    backgroundColor: "#0b0d12",
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: "700",
-    color: "#ffffff",
-    marginBottom: 24,
-    textAlign: "center",
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: "#2a2f3a",
-    borderRadius: 12,
-    padding: 14,
-    fontSize: 16,
-    color: "#ffffff",
-    backgroundColor: "#151822",
-  },
-  button: {
-    backgroundColor: "#5b6bfa",
-    borderRadius: 12,
-    padding: 14,
-    alignItems: "center",
-    marginTop: 12,
-  },
-  buttonDisabled: {
-    opacity: 0.5,
-  },
-  buttonText: {
-    color: "#ffffff",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-});

@@ -1,35 +1,39 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { supabase } from "./supabase";
 import { useAuth } from "./auth-context";
 
-type Profile = { username: string | null };
+export type Profile = {
+  username: string | null;
+  country: string | null;
+  primary_language: string | null;
+};
 
-/** Own profile row (username only, matches the public-column grant the API allows). */
-export function useProfile(): Profile | null {
+/** Own profile row — columns needed for Phase 1 (identity + onboarding gate). */
+export function useProfile() {
   const { session } = useAuth();
+  const userId = session?.user.id;
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    const userId = session?.user.id;
+  const refetch = useCallback(async () => {
     if (!userId) {
       setProfile(null);
+      setIsLoading(false);
       return;
     }
-
-    let cancelled = false;
-    supabase
+    const { data } = await supabase
       .from("profiles")
-      .select("username")
+      .select("username, country, primary_language")
       .eq("id", userId)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (!cancelled) setProfile(data);
-      });
+      .maybeSingle();
+    setProfile(data);
+    setIsLoading(false);
+  }, [userId]);
 
-    return () => {
-      cancelled = true;
-    };
-  }, [session?.user.id]);
+  useEffect(() => {
+    setIsLoading(true);
+    void refetch();
+  }, [refetch]);
 
-  return profile;
+  return { profile, isLoading, refetch };
 }
