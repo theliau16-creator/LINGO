@@ -29,6 +29,10 @@ describe("RATE_RULES", () => {
     expect(RATE_RULES.transcription.limit).toBeLessThan(RATE_RULES.message_send.limit);
     expect(RATE_RULES.invite_create.limit).toBeLessThan(RATE_RULES.message_send.limit);
   });
+
+  it("rate-limits the public device-link redeem endpoint like invite_join (IP-keyed anti-enumeration)", () => {
+    expect(RATE_RULES.device_link_redeem).toEqual(RATE_RULES.invite_join);
+  });
 });
 
 describe("ipFromHeaders", () => {

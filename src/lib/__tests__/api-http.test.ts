@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { apiOk, apiError, mapBusinessError } from "../api-http.server";
+import { apiOk, apiError, mapBusinessError, isUuid } from "../api-http.server";
 import { RateLimitError } from "../rate-limit.server";
 import {
   PreferencesValidationError,
@@ -7,8 +7,10 @@ import {
   type PreferencesInput,
 } from "../preferences.server";
 
+const A_UUID = "b3f5c2a0-1e4d-4a6b-9c3e-7f2d8a1b6c4e";
+
 const validPreferences: PreferencesInput = {
-  conversationId: "conv-1",
+  conversationId: A_UUID,
   background_type: "color",
   background_value: "#112233",
   outgoing_message_color: "#445566",
@@ -88,9 +90,37 @@ describe("mapBusinessError", () => {
   });
 });
 
+describe("isUuid", () => {
+  it("accepts a well-formed UUID, case-insensitively", () => {
+    expect(isUuid(A_UUID)).toBe(true);
+    expect(isUuid(A_UUID.toUpperCase())).toBe(true);
+  });
+
+  it("rejects anything that is not a UUID", () => {
+    expect(isUuid("not-a-uuid")).toBe(false);
+    expect(isUuid("conv-1")).toBe(false);
+    expect(isUuid("")).toBe(false);
+    expect(isUuid(null)).toBe(false);
+    expect(isUuid(undefined)).toBe(false);
+    expect(isUuid(42)).toBe(false);
+    // SQL-injection-shaped input must fail cleanly here, not reach Postgres.
+    expect(isUuid("'; DROP TABLE messages; --")).toBe(false);
+  });
+});
+
 describe("preferences input validation (shared by web server fn and mobile route)", () => {
   it("accepts a well-formed payload", () => {
     expect(validatePreferencesInput(validPreferences)).toEqual(validPreferences);
+  });
+
+  it("accepts a null conversationId (global preferences row)", () => {
+    expect(() => validatePreferencesInput({ ...validPreferences, conversationId: null })).not.toThrow();
+  });
+
+  it("rejects a non-UUID conversationId instead of letting it reach Postgres as a 500", () => {
+    expect(() =>
+      validatePreferencesInput({ ...validPreferences, conversationId: "conv-1" }),
+    ).toThrow(PreferencesValidationError);
   });
 
   it("rejects an unknown background type", () => {

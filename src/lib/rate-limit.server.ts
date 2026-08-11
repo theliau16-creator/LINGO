@@ -30,6 +30,13 @@ export const RATE_RULES = {
   invite_create: { limit: 10, windowSeconds: 3600 },
   /** Redeeming an invitation (guest join) — keyed by IP, anti-enumeration. */
   invite_join: { limit: 20, windowSeconds: 3600 },
+  /**
+   * Redeeming a device-link QR (public, unauthenticated) — keyed by IP,
+   * same anti-enumeration profile as invite_join: each attempt triggers a
+   * Supabase Auth admin call (`generateLink`) on success, and a wrong guess
+   * must not let a caller cheaply probe for valid-but-not-yet-scanned tokens.
+   */
+  device_link_redeem: { limit: 20, windowSeconds: 3600 },
   /** Open Graph fetches (outbound traffic from our worker). */
   link_preview: { limit: 30, windowSeconds: 300 },
   /** Phone OTP requests we can observe in our own layer. */

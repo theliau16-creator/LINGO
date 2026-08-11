@@ -1,3 +1,5 @@
+import { isUuid } from "@/lib/uuid";
+
 export type PreferencesInput = {
   conversationId: string | null;
   background_type: string;
@@ -15,6 +17,9 @@ export class PreferencesValidationError extends Error {}
 
 export function validatePreferencesInput(input: PreferencesInput): PreferencesInput {
   if (!input) throw new PreferencesValidationError("Préférences requises.");
+  if (input.conversationId !== null && !isUuid(input.conversationId)) {
+    throw new PreferencesValidationError("Identifiant de conversation invalide.");
+  }
   if (!BACKGROUND_TYPES.includes(input.background_type)) {
     throw new PreferencesValidationError("Type de fond invalide.");
   }

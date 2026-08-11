@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { authenticateApiRequest } from "@/lib/api-auth.server";
-import { apiOk, apiError, mapBusinessError } from "@/lib/api-http.server";
+import { apiOk, apiError, mapBusinessError, isUuid } from "@/lib/api-http.server";
 
 /**
  * POST /api/chat/messages/:messageId/translate — translates a freshly sent
@@ -16,7 +16,7 @@ export const Route = createFileRoute("/api/chat/messages/$messageId/translate")(
         if (!auth.ok) return apiError(auth.status, auth.code, auth.message);
 
         const messageId = params.messageId;
-        if (!messageId) return apiError(400, "INVALID_INPUT", "messageId is required.");
+        if (!isUuid(messageId)) return apiError(400, "INVALID_INPUT", "messageId must be a valid UUID.");
 
         try {
           const { enforceRateLimit } = await import("@/lib/rate-limit.server");

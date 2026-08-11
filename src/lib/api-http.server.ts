@@ -1,6 +1,16 @@
 import { isRateLimited, rateLimitDelay, isRlsDenied } from "@/lib/backend-errors";
 
 /**
+ * Every id-shaped route/body param that reaches a
+ * `.eq("id", …)`/`.eq("conversation_id", …)` query against a UUID column
+ * must be checked with this BEFORE the query — otherwise Postgres/PostgREST
+ * rejects it with a generic type-cast error that `mapBusinessError` cannot
+ * distinguish from a real 500, and a malformed id leaks as a 500 instead of
+ * a clean 400.
+ */
+export { isUuid } from "@/lib/uuid";
+
+/**
  * JSON response helpers for the mobile HTTP API (`src/routes/api/**`).
  * Machine-readable {code, message} — no French UI prose here, that stays in
  * `backend-errors.ts` for the web app. A mobile client branches on `code`.

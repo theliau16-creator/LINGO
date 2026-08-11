@@ -10,6 +10,11 @@ const QR_ERRORS = ["QR code invalide.", "Ce QR code a déjà été utilisé.", "
  * also unauthenticated). Reuses `consumeDeviceLinkToken`
  * (src/lib/device-link.server.ts) unchanged — the token is single-use, hashed
  * at rest and expires after 2 minutes.
+ *
+ * Rate-limited by IP (`device_link_redeem`, new — the web server function
+ * had none either, but a public endpoint that triggers a Supabase Auth
+ * admin call on every attempt needs one before it is reachable from
+ * outside the site).
  */
 export const Route = createFileRoute("/api/public/device-link/redeem")({
   server: {
@@ -28,6 +33,10 @@ export const Route = createFileRoute("/api/public/device-link/redeem")({
         }
 
         try {
+          const { enforceRateLimit, ipFromHeaders } = await import("@/lib/rate-limit.server");
+          const ip = ipFromHeaders(request.headers);
+          await enforceRateLimit("device_link_redeem", ip ? { kind: "ip", id: ip } : { kind: "anon" });
+
           const { consumeDeviceLinkToken } = await import("@/lib/device-link.server");
           const result = await consumeDeviceLinkToken(token);
           return apiOk(result);
