@@ -33,6 +33,7 @@ import { Route as ApiDeviceLinkTokenRouteImport } from './routes/api/device-link
 import { Route as ApiPreferencesChatRouteImport } from './routes/api/preferences/chat'
 import { Route as ApiPublicDeviceLinkRedeemRouteImport } from './routes/api/public/device-link/redeem'
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
+import { Route as ApiChatConversationsConversationIdBackfillRouteImport } from './routes/api/chat/conversations.$conversationId.backfill'
 import { Route as ApiChatMessagesMessageIdTranslateRouteImport } from './routes/api/chat/messages.$messageId.translate'
 import { Route as ApiChatMessagesMessageIdTranslationRouteImport } from './routes/api/chat/messages.$messageId.translation'
 
@@ -162,6 +163,12 @@ const ApiPublicPaymentsWebhookRoute =
     path: '/api/public/payments/webhook',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiChatConversationsConversationIdBackfillRoute =
+  ApiChatConversationsConversationIdBackfillRouteImport.update({
+    id: '/api/chat/conversations/$conversationId/backfill',
+    path: '/api/chat/conversations/$conversationId/backfill',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiChatMessagesMessageIdTranslateRoute =
   ApiChatMessagesMessageIdTranslateRouteImport.update({
     id: '/api/chat/messages/$messageId/translate',
@@ -199,6 +206,7 @@ export interface FileRoutesByFullPath {
   '/api/preferences/chat': typeof ApiPreferencesChatRoute
   '/api/public/device-link/redeem': typeof ApiPublicDeviceLinkRedeemRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
+  '/api/chat/conversations/$conversationId/backfill': typeof ApiChatConversationsConversationIdBackfillRoute
   '/api/chat/messages/$messageId/translate': typeof ApiChatMessagesMessageIdTranslateRoute
   '/api/chat/messages/$messageId/translation': typeof ApiChatMessagesMessageIdTranslationRoute
 }
@@ -226,6 +234,7 @@ export interface FileRoutesByTo {
   '/api/preferences/chat': typeof ApiPreferencesChatRoute
   '/api/public/device-link/redeem': typeof ApiPublicDeviceLinkRedeemRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
+  '/api/chat/conversations/$conversationId/backfill': typeof ApiChatConversationsConversationIdBackfillRoute
   '/api/chat/messages/$messageId/translate': typeof ApiChatMessagesMessageIdTranslateRoute
   '/api/chat/messages/$messageId/translation': typeof ApiChatMessagesMessageIdTranslationRoute
 }
@@ -255,6 +264,7 @@ export interface FileRoutesById {
   '/api/preferences/chat': typeof ApiPreferencesChatRoute
   '/api/public/device-link/redeem': typeof ApiPublicDeviceLinkRedeemRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
+  '/api/chat/conversations/$conversationId/backfill': typeof ApiChatConversationsConversationIdBackfillRoute
   '/api/chat/messages/$messageId/translate': typeof ApiChatMessagesMessageIdTranslateRoute
   '/api/chat/messages/$messageId/translation': typeof ApiChatMessagesMessageIdTranslationRoute
 }
@@ -284,6 +294,7 @@ export interface FileRouteTypes {
     | '/api/preferences/chat'
     | '/api/public/device-link/redeem'
     | '/api/public/payments/webhook'
+    | '/api/chat/conversations/$conversationId/backfill'
     | '/api/chat/messages/$messageId/translate'
     | '/api/chat/messages/$messageId/translation'
   fileRoutesByTo: FileRoutesByTo
@@ -311,6 +322,7 @@ export interface FileRouteTypes {
     | '/api/preferences/chat'
     | '/api/public/device-link/redeem'
     | '/api/public/payments/webhook'
+    | '/api/chat/conversations/$conversationId/backfill'
     | '/api/chat/messages/$messageId/translate'
     | '/api/chat/messages/$messageId/translation'
   id:
@@ -339,6 +351,7 @@ export interface FileRouteTypes {
     | '/api/preferences/chat'
     | '/api/public/device-link/redeem'
     | '/api/public/payments/webhook'
+    | '/api/chat/conversations/$conversationId/backfill'
     | '/api/chat/messages/$messageId/translate'
     | '/api/chat/messages/$messageId/translation'
   fileRoutesById: FileRoutesById
@@ -359,6 +372,7 @@ export interface RootRouteChildren {
   ApiPreferencesChatRoute: typeof ApiPreferencesChatRoute
   ApiPublicDeviceLinkRedeemRoute: typeof ApiPublicDeviceLinkRedeemRoute
   ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
+  ApiChatConversationsConversationIdBackfillRoute: typeof ApiChatConversationsConversationIdBackfillRoute
   ApiChatMessagesMessageIdTranslateRoute: typeof ApiChatMessagesMessageIdTranslateRoute
   ApiChatMessagesMessageIdTranslationRoute: typeof ApiChatMessagesMessageIdTranslationRoute
 }
@@ -533,6 +547,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicPaymentsWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/chat/conversations/$conversationId/backfill': {
+      id: '/api/chat/conversations/$conversationId/backfill'
+      path: '/api/chat/conversations/$conversationId/backfill'
+      fullPath: '/api/chat/conversations/$conversationId/backfill'
+      preLoaderRoute: typeof ApiChatConversationsConversationIdBackfillRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/chat/messages/$messageId/translate': {
       id: '/api/chat/messages/$messageId/translate'
       path: '/api/chat/messages/$messageId/translate'
@@ -594,6 +615,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPreferencesChatRoute: ApiPreferencesChatRoute,
   ApiPublicDeviceLinkRedeemRoute: ApiPublicDeviceLinkRedeemRoute,
   ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,
+  ApiChatConversationsConversationIdBackfillRoute:
+    ApiChatConversationsConversationIdBackfillRoute,
   ApiChatMessagesMessageIdTranslateRoute:
     ApiChatMessagesMessageIdTranslateRoute,
   ApiChatMessagesMessageIdTranslationRoute:
