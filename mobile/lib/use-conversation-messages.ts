@@ -18,8 +18,12 @@ export type MessageRow = {
   source_language: string;
   created_at: string;
   translation_status: string;
+  translation_error: string | null;
   message_translations: Translation[];
 };
+
+/** Set by quota.server.ts's assertQuota — the one non-transient translation failure. */
+export const QUOTA_REACHED = "TRANSLATION_QUOTA_REACHED";
 
 export type PendingMessage = {
   localId: string;
@@ -45,7 +49,7 @@ const PAGE_SIZE = 40;
  * reply-to, deletion, receipts and attachments are out of scope for this phase.
  */
 const SELECT =
-  "id, sender_id, original_text, source_language, created_at, translation_status, message_translations(language, translated_text, confidence_score, alternative_translation, corrected_by_user)";
+  "id, sender_id, original_text, source_language, created_at, translation_status, translation_error, message_translations(language, translated_text, confidence_score, alternative_translation, corrected_by_user)";
 
 /** After this delay a translation still "pending" is abandoned work, not work in progress. */
 const STALE_TRANSLATION_MS = 60_000;

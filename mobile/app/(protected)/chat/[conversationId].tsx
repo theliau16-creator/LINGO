@@ -10,11 +10,12 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Stack, useLocalSearchParams } from "expo-router";
+import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useAuth } from "@/lib/auth-context";
 import { useProfile } from "@/lib/use-profile";
 import {
   isTranslationStale,
+  QUOTA_REACHED,
   useConversationMessages,
   useConversationMeta,
   type MessageRow,
@@ -189,6 +190,10 @@ function MessageBubble({
   const waiting =
     !mine && !translation && message.source_language !== myLanguage && message.translation_status !== "failed" && !stale;
   const failed = message.translation_status === "failed" || stale;
+  // Quota exhaustion is not transient: the backend already refused (assertQuota
+  // in quota.server.ts), so a plain "retry" would fail again identically —
+  // send the user to the paywall instead of a dead-end retry button.
+  const quotaReached = message.translation_status === "failed" && message.translation_error === QUOTA_REACHED;
 
   return (
     <View className={`flex-col ${mine ? "items-end" : "items-start"}`}>
@@ -219,7 +224,13 @@ function MessageBubble({
             </Text>
           </Pressable>
         ) : null}
-        {failed ? (
+        {quotaReached ? (
+          <Pressable onPress={() => router.push("/premium")} className="flex-row items-center gap-1">
+            <Text className="text-[11px] text-amber-400">
+              Quota de traductions gratuites atteint — passer à Premium
+            </Text>
+          </Pressable>
+        ) : failed ? (
           <Pressable onPress={onRetryTranslation} className="flex-row items-center gap-1">
             <Text className="text-[11px] text-amber-400">↻ La traduction a échoué — réessayer</Text>
           </Pressable>
