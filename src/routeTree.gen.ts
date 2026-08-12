@@ -29,6 +29,8 @@ import { Route as JoinCodeRouteImport } from './routes/join.$code'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as AuthenticatedChatConversationIdRouteImport } from './routes/_authenticated/chat.$conversationId'
+import { Route as ApiAccountDeleteRouteImport } from './routes/api/account/delete'
+import { Route as ApiAccountExportRouteImport } from './routes/api/account/export'
 import { Route as ApiDeviceLinkTokenRouteImport } from './routes/api/device-link/token'
 import { Route as ApiPreferencesChatRouteImport } from './routes/api/preferences/chat'
 import { Route as ApiPublicDeviceLinkRedeemRouteImport } from './routes/api/public/device-link/redeem'
@@ -141,6 +143,16 @@ const AuthenticatedChatConversationIdRoute =
     path: '/chat/$conversationId',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const ApiAccountDeleteRoute = ApiAccountDeleteRouteImport.update({
+  id: '/api/account/delete',
+  path: '/api/account/delete',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAccountExportRoute = ApiAccountExportRouteImport.update({
+  id: '/api/account/export',
+  path: '/api/account/export',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiDeviceLinkTokenRoute = ApiDeviceLinkTokenRouteImport.update({
   id: '/api/device-link/token',
   path: '/api/device-link/token',
@@ -202,6 +214,8 @@ export interface FileRoutesByFullPath {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/chat/$conversationId': typeof AuthenticatedChatConversationIdRoute
+  '/api/account/delete': typeof ApiAccountDeleteRoute
+  '/api/account/export': typeof ApiAccountExportRoute
   '/api/device-link/token': typeof ApiDeviceLinkTokenRoute
   '/api/preferences/chat': typeof ApiPreferencesChatRoute
   '/api/public/device-link/redeem': typeof ApiPublicDeviceLinkRedeemRoute
@@ -230,6 +244,8 @@ export interface FileRoutesByTo {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/chat/$conversationId': typeof AuthenticatedChatConversationIdRoute
+  '/api/account/delete': typeof ApiAccountDeleteRoute
+  '/api/account/export': typeof ApiAccountExportRoute
   '/api/device-link/token': typeof ApiDeviceLinkTokenRoute
   '/api/preferences/chat': typeof ApiPreferencesChatRoute
   '/api/public/device-link/redeem': typeof ApiPublicDeviceLinkRedeemRoute
@@ -260,6 +276,8 @@ export interface FileRoutesById {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/_authenticated/chat/$conversationId': typeof AuthenticatedChatConversationIdRoute
+  '/api/account/delete': typeof ApiAccountDeleteRoute
+  '/api/account/export': typeof ApiAccountExportRoute
   '/api/device-link/token': typeof ApiDeviceLinkTokenRoute
   '/api/preferences/chat': typeof ApiPreferencesChatRoute
   '/api/public/device-link/redeem': typeof ApiPublicDeviceLinkRedeemRoute
@@ -290,6 +308,8 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/chat/$conversationId'
+    | '/api/account/delete'
+    | '/api/account/export'
     | '/api/device-link/token'
     | '/api/preferences/chat'
     | '/api/public/device-link/redeem'
@@ -318,6 +338,8 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/chat/$conversationId'
+    | '/api/account/delete'
+    | '/api/account/export'
     | '/api/device-link/token'
     | '/api/preferences/chat'
     | '/api/public/device-link/redeem'
@@ -347,6 +369,8 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/_authenticated/chat/$conversationId'
+    | '/api/account/delete'
+    | '/api/account/export'
     | '/api/device-link/token'
     | '/api/preferences/chat'
     | '/api/public/device-link/redeem'
@@ -368,6 +392,8 @@ export interface RootRouteChildren {
   JoinCodeRoute: typeof JoinCodeRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
+  ApiAccountDeleteRoute: typeof ApiAccountDeleteRoute
+  ApiAccountExportRoute: typeof ApiAccountExportRoute
   ApiDeviceLinkTokenRoute: typeof ApiDeviceLinkTokenRoute
   ApiPreferencesChatRoute: typeof ApiPreferencesChatRoute
   ApiPublicDeviceLinkRedeemRoute: typeof ApiPublicDeviceLinkRedeemRoute
@@ -519,6 +545,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedChatConversationIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/api/account/delete': {
+      id: '/api/account/delete'
+      path: '/api/account/delete'
+      fullPath: '/api/account/delete'
+      preLoaderRoute: typeof ApiAccountDeleteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/account/export': {
+      id: '/api/account/export'
+      path: '/api/account/export'
+      fullPath: '/api/account/export'
+      preLoaderRoute: typeof ApiAccountExportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/device-link/token': {
       id: '/api/device-link/token'
       path: '/api/device-link/token'
@@ -611,6 +651,8 @@ const rootRouteChildren: RootRouteChildren = {
   JoinCodeRoute: JoinCodeRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
+  ApiAccountDeleteRoute: ApiAccountDeleteRoute,
+  ApiAccountExportRoute: ApiAccountExportRoute,
   ApiDeviceLinkTokenRoute: ApiDeviceLinkTokenRoute,
   ApiPreferencesChatRoute: ApiPreferencesChatRoute,
   ApiPublicDeviceLinkRedeemRoute: ApiPublicDeviceLinkRedeemRoute,
