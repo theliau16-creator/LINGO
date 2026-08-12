@@ -173,6 +173,17 @@ export async function sendVoiceMessage(
   userId: string,
   input: { conversationId: string; path: string; durationMs: number; language: string },
 ) {
+  // Same gate as sendPhotoMessage, same primitive: the recording must live in
+  // THIS message's conversation folder, not one merely uploaded into a
+  // different shared conversation. Storage/RLS for chat-media is identical
+  // for audio and images (bucket-level policies, not type-specific), and
+  // both uploaders (web's objectPath(), mobile's uploadMediaFile()) already
+  // write voice recordings under the same conversationId/... convention as
+  // photos — this was a missing check, not a different convention to adopt.
+  if (!isPathInConversation(input.path, input.conversationId)) {
+    throw new Error("Fichier non autorisé.");
+  }
+
   const attachment: Attachment = {
     path: input.path,
     type: "audio",

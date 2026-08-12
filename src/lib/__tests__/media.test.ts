@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   assertAudioPlayable,
   assertImageObject,
@@ -8,6 +8,7 @@ import {
   sniffAudioContainer,
 } from "../media-validation";
 import { isGcCandidate, ORPHAN_GRACE_MS, referencedPaths } from "../media-gc.server";
+import { sendVoiceMessage } from "../media.server";
 
 const bytes = (...values: number[]) => new Uint8Array([...values, ...new Array(16).fill(0)]);
 const ascii = (text: string, offset = 0) => {
@@ -105,6 +106,72 @@ describe("isPathInConversation", () => {
 
   it("never accepts a userId-prefixed path — the convention this bug regressed from", () => {
     expect(isPathInConversation("user-1/a.jpg", "conv-1")).toBe(false);
+  });
+});
+
+/** Minimal chainable fake of the Supabase client shape sendVoiceMessage uses. */
+function fakeSupabaseClient() {
+  const insertMessage = vi.fn().mockReturnValue({
+    select: () => ({ maybeSingle: async () => ({ data: { id: "msg-1" }, error: null }) }),
+  });
+  const insertVoiceRow = vi.fn().mockResolvedValue({ error: null });
+  const from = vi.fn((table: string) => {
+    if (table === "messages") return { insert: insertMessage };
+    if (table === "voice_messages") return { insert: insertVoiceRow };
+    throw new Error(`unexpected table: ${table}`);
+  });
+  return { from, insertMessage, insertVoiceRow } as unknown as Parameters<typeof sendVoiceMessage>[0] & {
+    from: typeof from;
+    insertMessage: typeof insertMessage;
+    insertVoiceRow: typeof insertVoiceRow;
+  };
+}
+
+describe("sendVoiceMessage — path validation", () => {
+  // Regression coverage for the asymmetry found right after the photo fix:
+  // sendPhotoMessage validated its attachment path with isPathInConversation,
+  // sendVoiceMessage did not validate its path at all. Same bucket, same RLS
+  // (chat_media_insert/chat_media_select are not type-specific), same upload
+  // convention (web's objectPath() and mobile's uploadMediaFile() already
+  // write voice recordings under conversationId/... exactly like photos) —
+  // so this closes the gap with the same primitive, not a new one.
+  it("rejects a path uploaded into a different conversation, before any DB write", async () => {
+    const client = fakeSupabaseClient();
+    await expect(
+      sendVoiceMessage(client, "user-1", {
+        conversationId: "conv-1",
+        path: "conv-2/recording.m4a",
+        durationMs: 2000,
+        language: "fr",
+      }),
+    ).rejects.toThrow("Fichier non autorisé.");
+    expect(client.from).not.toHaveBeenCalled();
+  });
+
+  it("rejects path traversal and absolute paths the same way", async () => {
+    const client = fakeSupabaseClient();
+    await expect(
+      sendVoiceMessage(client, "user-1", {
+        conversationId: "conv-1",
+        path: "../conv-2/recording.m4a",
+        durationMs: 2000,
+        language: "fr",
+      }),
+    ).rejects.toThrow("Fichier non autorisé.");
+    expect(client.from).not.toHaveBeenCalled();
+  });
+
+  it("proceeds to insert the message when the path matches the conversation", async () => {
+    const client = fakeSupabaseClient();
+    const result = await sendVoiceMessage(client, "user-1", {
+      conversationId: "conv-1",
+      path: "conv-1/recording.m4a",
+      durationMs: 2000,
+      language: "fr",
+    });
+    expect(result.id).toBe("msg-1");
+    expect(client.insertMessage).toHaveBeenCalledTimes(1);
+    expect(client.insertVoiceRow).toHaveBeenCalledTimes(1);
   });
 });
 
