@@ -91,8 +91,27 @@ export function assertImageObject(object: StoredObject): void {
   }
 }
 
-/** Storage paths must stay inside the caller's own folder. */
-export function isOwnedStoragePath(path: string, userId: string): boolean {
+/**
+ * Storage paths must stay inside the folder of the conversation the message
+ * is being sent to — the canonical convention for the `chat-media` bucket
+ * (supabase/migrations/20260810173002_*.sql: `chat_media_insert`/`chat_media_select`
+ * both gate on `is_participant(conversationId, auth.uid())`, not on a per-user
+ * folder). Media is read by every participant of a conversation, not just its
+ * uploader, so the bucket cannot be keyed by userId without a materially more
+ * complex read policy — the RLS policies already in production settled this.
+ *
+ * Checking against the specific conversationId of the message being created
+ * (not just "some conversation the caller is in") also closes a real gap: it
+ * stops a participant from attaching, to a message in conversation A, a file
+ * that was actually uploaded into a *different* shared conversation B they
+ * also happen to be a member of.
+ *
+ * Previously named `isOwnedStoragePath` and checked a `${userId}/...` prefix
+ * — that never matched the live RLS convention or what any uploader (web or
+ * mobile) actually writes, so every photo send failed with "Fichier non
+ * autorisé." Fixed here instead of drifting further; see media.server.ts.
+ */
+export function isPathInConversation(path: string, conversationId: string): boolean {
   if (!path || path.includes("..") || path.startsWith("/")) return false;
-  return path.startsWith(`${userId}/`);
+  return path.startsWith(`${conversationId}/`);
 }

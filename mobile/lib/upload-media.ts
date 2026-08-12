@@ -24,15 +24,11 @@ export type Attachment = {
  *
  * Path convention: `${conversationId}/${uuid}.${extension}`, matching both
  * the storage RLS policy (keyed on the conversation, via `is_participant`)
- * and media-composer.tsx's own `objectPath()` — kept identical on purpose.
- * NOTE (found during audit, not fixed here — no mobile-specific need to
- * touch server business logic): `sendPhotoMessage` (src/lib/media.server.ts)
- * separately validates the path with `isOwnedStoragePath`, which expects a
- * `${userId}/...` prefix instead. That check will reject a path uploaded
- * under this convention. This mismatch pre-exists on web too (media-composer.tsx
- * already uploads to `${conversationId}/...`) — it is not something this
- * phase introduces, and fixing it means editing shared server logic beyond
- * what mobile support requires. Flagged in the Phase 7 report.
+ * and media-composer.tsx's own `objectPath()` — kept identical on purpose,
+ * and now also what `sendPhotoMessage`'s own validation expects
+ * (`isPathInConversation`, src/lib/media-validation.ts — fixed in a
+ * dedicated follow-up commit after this phase; it used to check a
+ * `${userId}/...` prefix that no uploader, web or mobile, ever wrote).
  */
 function randomId(): string {
   // Matches the id shape already used for optimistic message ids in

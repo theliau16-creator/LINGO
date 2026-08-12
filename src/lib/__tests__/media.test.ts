@@ -3,7 +3,7 @@ import {
   assertAudioPlayable,
   assertImageObject,
   audioFileName,
-  isOwnedStoragePath,
+  isPathInConversation,
   MAX_AUDIO_BYTES,
   sniffAudioContainer,
 } from "../media-validation";
@@ -77,12 +77,34 @@ describe("assertImageObject", () => {
   });
 });
 
-describe("isOwnedStoragePath", () => {
-  it("only accepts paths inside the caller's own folder", () => {
-    expect(isOwnedStoragePath("user-1/a.jpg", "user-1")).toBe(true);
-    expect(isOwnedStoragePath("user-2/a.jpg", "user-1")).toBe(false);
-    expect(isOwnedStoragePath("../user-2/a.jpg", "user-1")).toBe(false);
-    expect(isOwnedStoragePath("/user-1/a.jpg", "user-1")).toBe(false);
+describe("isPathInConversation", () => {
+  // Canonical convention for the chat-media bucket: paths are keyed by
+  // conversationId, matching the live storage RLS policies
+  // (chat_media_insert/chat_media_select, both gated on
+  // is_participant(conversationId, auth.uid())) and what every uploader,
+  // web (media-composer.tsx) and mobile (upload-media.ts), actually writes.
+  // Regression coverage for the Phase 7 bug: this function used to check a
+  // `${userId}/...` prefix, which never matched, so every photo send failed
+  // with "Fichier non autorisé." — these cases pin the correct contract.
+  it("only accepts paths inside the message's own conversation folder", () => {
+    expect(isPathInConversation("conv-1/a.jpg", "conv-1")).toBe(true);
+    expect(isPathInConversation("conv-2/a.jpg", "conv-1")).toBe(false);
+  });
+
+  it("refuses a file uploaded to a different (even shared) conversation", () => {
+    // Closes a real gap, not just a path-format check: a participant of both
+    // conv-1 and conv-2 must not be able to attach, to a message in conv-1,
+    // a file that actually lives in conv-2's folder.
+    expect(isPathInConversation("conv-2/shared-with-both.jpg", "conv-1")).toBe(false);
+  });
+
+  it("refuses path traversal and absolute paths", () => {
+    expect(isPathInConversation("../conv-2/a.jpg", "conv-1")).toBe(false);
+    expect(isPathInConversation("/conv-1/a.jpg", "conv-1")).toBe(false);
+  });
+
+  it("never accepts a userId-prefixed path — the convention this bug regressed from", () => {
+    expect(isPathInConversation("user-1/a.jpg", "conv-1")).toBe(false);
   });
 });
 

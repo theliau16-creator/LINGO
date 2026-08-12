@@ -7,7 +7,7 @@ import {
   assertAudioPlayable,
   assertImageObject,
   audioFileName,
-  isOwnedStoragePath,
+  isPathInConversation,
   MAX_PHOTOS_PER_MESSAGE,
   sniffAudioContainer,
 } from "./media-validation";
@@ -42,10 +42,11 @@ export async function sendPhotoMessage(
   const caption = (input.caption ?? "").trim().slice(0, 1000);
 
   // Server-side gate: the client cannot claim a size/type the storage object
-  // does not actually have, nor reference someone else's upload.
+  // does not actually have, nor attach a file uploaded into a different
+  // conversation's folder (see isPathInConversation in media-validation.ts).
   const supabaseAdmin = await admin();
   for (const attachment of input.attachments) {
-    if (!isOwnedStoragePath(attachment.path, userId)) {
+    if (!isPathInConversation(attachment.path, input.conversationId)) {
       throw new Error("Fichier non autorisé.");
     }
     const folder = attachment.path.split("/").slice(0, -1).join("/");
