@@ -28,7 +28,22 @@
     },
     "plugins": [
       "expo-router",
-      "expo-status-bar"
+      "expo-status-bar",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Lingo a besoin du micro pour enregistrer vos messages vocaux."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Lingo a besoin d'accéder à vos photos pour les envoyer dans vos conversations.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
+      ],
+      "expo-asset"
     ]
   }
 }

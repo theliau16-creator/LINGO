@@ -11,6 +11,8 @@ export type Translation = {
   corrected_by_user: boolean | null;
 };
 
+export type MessageAttachment = { path: string; type?: string; duration_ms?: number };
+
 export type MessageRow = {
   id: string;
   sender_id: string;
@@ -19,6 +21,8 @@ export type MessageRow = {
   created_at: string;
   translation_status: string;
   translation_error: string | null;
+  message_type: string;
+  attachments: MessageAttachment[] | null;
   message_translations: Translation[];
 };
 
@@ -45,11 +49,11 @@ const PAGE_SIZE = 40;
 
 /**
  * Trimmed version of the SELECT in src/routes/_authenticated/chat.$conversationId.tsx —
- * only what Phase 3 renders (history, translation, pending state). Reactions,
- * reply-to, deletion, receipts and attachments are out of scope for this phase.
+ * history, translation, pending state, and (Phase 7) media attachments.
+ * Reactions, reply-to, deletion and read receipts remain out of scope.
  */
 const SELECT =
-  "id, sender_id, original_text, source_language, created_at, translation_status, translation_error, message_translations(language, translated_text, confidence_score, alternative_translation, corrected_by_user)";
+  "id, sender_id, original_text, source_language, created_at, translation_status, translation_error, message_type, attachments, message_translations(language, translated_text, confidence_score, alternative_translation, corrected_by_user)";
 
 /** After this delay a translation still "pending" is abandoned work, not work in progress. */
 const STALE_TRANSLATION_MS = 60_000;

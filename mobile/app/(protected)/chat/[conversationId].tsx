@@ -24,6 +24,8 @@ import {
 import { usePresence } from "@/lib/use-presence";
 import { languageLabel } from "@/lib/languages";
 import { Button } from "@/components/ui/button";
+import { MediaComposer } from "@/components/media-composer";
+import { MessageAttachments } from "@/components/message-attachments";
 
 export default function ChatDetail() {
   const { conversationId } = useLocalSearchParams<{ conversationId: string }>();
@@ -146,7 +148,10 @@ export default function ChatDetail() {
           />
         )}
 
-        <View className="flex-row items-center gap-2 border-t border-border px-3 py-3">
+        <View className="border-t border-border px-3 py-3">
+          <MediaComposer conversationId={conversationId} language={myLanguage} onSent={() => void refetch()} />
+        </View>
+        <View className="flex-row items-center gap-2 px-3 pb-3">
           <TextInput
             value={draft}
             onChangeText={(text) => {
@@ -195,47 +200,66 @@ function MessageBubble({
   // send the user to the paywall instead of a dead-end retry button.
   const quotaReached = message.translation_status === "failed" && message.translation_error === QUOTA_REACHED;
 
+  // Photo captions and voice transcripts are optional/deferred: a photo with
+  // no caption is "done" with an empty original_text, and a voice note's
+  // original_text stays empty until transcribeVoiceMessage fills it in — the
+  // text block (and its waiting/failed state, which describes the CAPTION's
+  // translation, not the transcription itself) only makes sense once there
+  // is text to translate.
+  const hasText = message.original_text.trim().length > 0;
+  const showTextBlock = message.message_type === "text" || hasText;
+
   return (
     <View className={`flex-col ${mine ? "items-end" : "items-start"}`}>
-      <View
-        className={`max-w-[80%] rounded-3xl px-4 py-2.5 ${
-          mine ? "rounded-br-lg bg-primary" : "rounded-bl-lg bg-card"
-        }`}
-      >
-        {waiting ? (
-          <View className="flex-row items-center gap-2 opacity-70">
-            <ActivityIndicator size="small" color={mine ? "#fbfcfe" : "#9598a4"} />
-            <Text className={`text-[15px] ${mine ? "text-primary-foreground" : "text-foreground"}`}>
-              Traduction…
-            </Text>
-          </View>
-        ) : (
-          <Text className={`text-[15px] leading-snug ${mine ? "text-primary-foreground" : "text-foreground"}`}>
-            {body}
-          </Text>
-        )}
-      </View>
+      {message.attachments?.length ? (
+        <View className={`max-w-[80%] ${mine ? "items-end" : "items-start"}`}>
+          <MessageAttachments attachments={message.attachments} messageId={message.id} mine={mine} />
+        </View>
+      ) : null}
 
-      <View className="mt-1 flex-row items-center gap-3 px-2">
-        {translated ? (
-          <Pressable onPress={() => setShowOriginal((v) => !v)}>
-            <Text className="text-[11px] font-medium text-muted-foreground">
-              {showOriginal ? "Voir la traduction" : "Voir l'original"}
-            </Text>
-          </Pressable>
-        ) : null}
-        {quotaReached ? (
-          <Pressable onPress={() => router.push("/premium")} className="flex-row items-center gap-1">
-            <Text className="text-[11px] text-amber-400">
-              Quota de traductions gratuites atteint — passer à Premium
-            </Text>
-          </Pressable>
-        ) : failed ? (
-          <Pressable onPress={onRetryTranslation} className="flex-row items-center gap-1">
-            <Text className="text-[11px] text-amber-400">↻ La traduction a échoué — réessayer</Text>
-          </Pressable>
-        ) : null}
-      </View>
+      {showTextBlock ? (
+        <>
+          <View
+            className={`max-w-[80%] rounded-3xl px-4 py-2.5 ${
+              mine ? "rounded-br-lg bg-primary" : "rounded-bl-lg bg-card"
+            }`}
+          >
+            {waiting ? (
+              <View className="flex-row items-center gap-2 opacity-70">
+                <ActivityIndicator size="small" color={mine ? "#fbfcfe" : "#9598a4"} />
+                <Text className={`text-[15px] ${mine ? "text-primary-foreground" : "text-foreground"}`}>
+                  Traduction…
+                </Text>
+              </View>
+            ) : (
+              <Text className={`text-[15px] leading-snug ${mine ? "text-primary-foreground" : "text-foreground"}`}>
+                {body}
+              </Text>
+            )}
+          </View>
+
+          <View className="mt-1 flex-row items-center gap-3 px-2">
+            {translated ? (
+              <Pressable onPress={() => setShowOriginal((v) => !v)}>
+                <Text className="text-[11px] font-medium text-muted-foreground">
+                  {showOriginal ? "Voir la traduction" : "Voir l'original"}
+                </Text>
+              </Pressable>
+            ) : null}
+            {quotaReached ? (
+              <Pressable onPress={() => router.push("/premium")} className="flex-row items-center gap-1">
+                <Text className="text-[11px] text-amber-400">
+                  Quota de traductions gratuites atteint — passer à Premium
+                </Text>
+              </Pressable>
+            ) : failed ? (
+              <Pressable onPress={onRetryTranslation} className="flex-row items-center gap-1">
+                <Text className="text-[11px] text-amber-400">↻ La traduction a échoué — réessayer</Text>
+              </Pressable>
+            ) : null}
+          </View>
+        </>
+      ) : null}
     </View>
   );
 }
