@@ -12,7 +12,8 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.lingo"
+      "bundleIdentifier": "com.anonymous.lingo",
+      "usesAppleSignIn": true
     },
     "android": {
       "adaptiveIcon": {
@@ -43,7 +44,9 @@
           "microphonePermission": false
         }
       ],
-      "expo-asset"
+      "expo-asset",
+      "expo-web-browser",
+      "expo-apple-authentication"
     ]
   }
 }

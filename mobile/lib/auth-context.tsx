@@ -1,8 +1,8 @@
 import { createContext, useContext, useEffect, useState, type PropsWithChildren } from "react";
 import * as Linking from "expo-linking";
-import { getQueryParams } from "expo-auth-session/build/QueryParams";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "./supabase";
+import { establishSessionFromUrl } from "./deep-link-session";
 
 type AuthContextValue = {
   session: Session | null;
@@ -21,33 +21,6 @@ export function useAuth(): AuthContextValue {
   const value = useContext(AuthContext);
   if (!value) throw new Error("useAuth must be used within an AuthProvider");
   return value;
-}
-
-/**
- * Recovery links land as `lingo://reset-password#access_token=...&refresh_token=...&type=recovery`
- * (or `?code=...` depending on the Supabase project's auth flow). `detectSessionInUrl`
- * is off on the mobile client (there's no browser location bar to parse), so the
- * link is parsed and exchanged for a session by hand — the pattern from Supabase's
- * own React Native deep-linking guide.
- */
-async function tryHandleRecoveryUrl(url: string): Promise<boolean> {
-  const { params, errorCode } = getQueryParams(url);
-  if (errorCode) return false;
-
-  if (params["access_token"] && params["refresh_token"]) {
-    const { error } = await supabase.auth.setSession({
-      access_token: params["access_token"],
-      refresh_token: params["refresh_token"],
-    });
-    return !error;
-  }
-
-  if (params["code"]) {
-    const { error } = await supabase.auth.exchangeCodeForSession(params["code"]);
-    return !error;
-  }
-
-  return false;
 }
 
 export function AuthProvider({ children }: PropsWithChildren) {
@@ -80,7 +53,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
     async function handleUrl(url: string) {
       if (!url.includes("reset-password")) return;
-      const handled = await tryHandleRecoveryUrl(url);
+      const handled = await establishSessionFromUrl(url);
       if (handled) setNeedsPasswordReset(true);
     }
   }, []);

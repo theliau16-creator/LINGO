@@ -24,3 +24,9 @@ export const COUNTRIES: Country[] = [
   { code: "IN", name: "Inde", dial: "+91", flag: "🇮🇳" },
   { code: "JP", name: "Japon", dial: "+81", flag: "🇯🇵" },
 ];
+
+/** Builds an E.164 number from a dial code and a locally typed number. */
+export function toE164(dial: string, local: string): string {
+  const digits = local.replace(/\D/g, "").replace(/^0+/, "");
+  return `${dial}${digits}`;
+}

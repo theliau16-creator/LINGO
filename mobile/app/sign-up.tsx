@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { Screen } from "@/components/screen";
 import { Button } from "@/components/ui/button";
 import { TextField } from "@/components/ui/text-field";
+import { OAuthButtons } from "@/components/oauth-buttons";
 
 export default function SignUp() {
   const [username, setUsername] = useState("");
@@ -61,6 +62,14 @@ export default function SignUp() {
         <Text className="mb-2 text-center text-[28px] font-bold text-foreground">
           Créer un compte
         </Text>
+
+        <OAuthButtons />
+
+        <View className="my-2 flex-row items-center gap-3">
+          <View className="h-px flex-1 bg-border" />
+          <Text className="text-[11px] uppercase tracking-widest text-muted-foreground">ou</Text>
+          <View className="h-px flex-1 bg-border" />
+        </View>
 
         <TextField
           label="Nom d'utilisateur (optionnel)"
