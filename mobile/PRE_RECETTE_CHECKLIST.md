@@ -12,66 +12,47 @@ recette écran par écran).
 
 ---
 
-## 1. Migrations Supabase non appliquées — sondage direct, portée limitée
+## 1. Migrations Supabase non appliquées — confirmation officielle obtenue
 
-Le CLI Supabase reste sans accès (`supabase link --project-ref
-btsazmbmslgghlgjkmkw` échoue toujours avec une erreur de permissions —
-compte CLI authentifié sur un autre projet). Mais `SUPABASE_URL` +
-`SUPABASE_PUBLISHABLE_KEY` (clé **publique**, déjà dans `.env`) suffisent
-pour sonder l'API REST (PostgREST) de la base réelle en lecture seule,
-sans écrire ni exposer aucune donnée : une colonne/table absente renvoie
-une erreur PostgreSQL distincte (`42703`/`PGRST205`) d'une erreur de
-permission RLS (`42501`), ce qui permet de distinguer "n'existe pas" de
-"existe mais inaccessible à ce rôle". Sondes exécutées le 2026-08-18 :
+**Correction de contexte importante :** Lingo utilise le backend
+intégré **Lovable Cloud**, pas un projet Supabase externe rattaché à
+un compte Supabase personnel. Le project ref backend n'a donc aucune
+raison d'apparaître dans `supabase projects list` d'un compte
+personnel — ce n'était pas une anomalie d'accès à corriger en
+changeant de compte/en invitant une adresse dans une organisation
+Supabase, seulement une mauvaise hypothèse de ma part sur la nature du
+backend. **`supabase link`/`supabase migration list` ne doivent plus
+être tentés sur un compte Supabase personnel pour ce projet.**
 
-| Vérifié | Résultat HTTP | Interprétation |
-|---|---|---|
-| `device_tokens` (table, Phase 10) | `404 PGRST205` (table absente du cache de schéma) | **Migration Push NON appliquée** |
-| `processed_revenuecat_events` (table, Phase 11) | `404 PGRST205` | **Migration RevenueCat NON appliquée** |
-| `subscriptions.provider` (colonne, Phase 11) | `400 42703` (colonne inexistante) | **Migration RevenueCat NON appliquée** |
-| `subscriptions.provider_subscription_id` | `400 42703` | idem |
-| `messages.push_notified_at` (colonne, Phase 10) | `400 42703` | **Migration Push NON appliquée** |
-| `subscriptions` (table) | `200 []` | table déjà présente (migration `20260807230148`) |
-| `processed_stripe_events` (table) | `200 []` | déjà présente (migration `20260808115539`) |
-| `device_link_tokens`, `chat_preferences` (tables) | `200 []` chacune | déjà présentes (migration `20260807203443`) |
-| `voice_messages.processing_started_at`/`attempt_count` | `200 []` | déjà présentes (migration `20260810192001`) |
-| `messages.translation_version` | `200 []` | déjà présente (migration `20260810210705`, la **dernière** avant Push/RevenueCat) |
-| `profiles.phone` (accès anon) | `401 42501` *permission denied* (pas *column does not exist*) | cohérent avec le REVOKE de sécurité de `20260810210705` — cet élément précis de cette migration semble actif |
+Avant cette clarification, ce document s'appuyait sur un sondage
+indirect via l'API REST publique (lecture d'un échantillon de
+tables/colonnes) — utile mais explicitement qualifié de non-exhaustif.
+**Une vérification directe en lecture seule de la vraie base Lovable
+Cloud a depuis été effectuée sur `supabase_migrations.schema_migrations`**
+(la table interne que Supabase/Postgres utilise pour tracer l'historique
+réel des migrations appliquées) — c'est la source faisant autorité,
+supérieure au sondage REST par table.
 
-**Portée exacte de ce que ce sondage établit — et de ce qu'il n'établit
-pas :**
+**Résultat exhaustif, confirmé officiellement :**
 
-- **Solidement établi, testé directement, table ET colonne :** les
-  deux migrations nouvelles (Push, RevenueCat) sont **absentes** de la
-  base distante. Ce point-là ne repose pas sur un échantillon.
-- **Ce que le reste montre :** un échantillon de tables/colonnes tirées
-  de 5 des 26 migrations antérieures (`20260807203443`,
-  `20260807230148`, `20260808115539`, `20260810192001`,
-  `20260810210705`) est présent et cohérent avec ce que ces migrations
-  sont censées avoir produit. **Ce n'est pas une vérification
-  exhaustive des 26 migrations une par une** — je n'ai pas contrôlé
-  chaque table, colonne, contrainte, policy RLS ou fonction de chacune
-  d'elles, seulement quelques marqueurs choisis pour couvrir le début
-  et la fin de la chronologie. Formulation correcte : ces 26 migrations
-  sont **cohérentes avec l'état observé de la base distante, aucune
-  divergence détectée sur les éléments contrôlés** — ce n'est pas
-  l'équivalent d'un `supabase migration list` qui donnerait
-  l'historique exhaustif réel appliqué par Supabase.
+| Migration | État réel confirmé |
+|---|---|
+| 26 migrations historiques (`20260806042707` → `20260810210705`) | ✅ **Toutes enregistrées comme appliquées** dans `supabase_migrations.schema_migrations` |
+| `20260818150000` — Push (`device_tokens`, `messages.push_notified_at`) | ❌ **Non appliquée** |
+| `20260818160000` — RevenueCat (`subscriptions.provider*`, `processed_revenuecat_events`) | ❌ **Non appliquée** |
 
-Cette méthode ne remplace donc pas un accès authentifié au bon projet.
-**Prochaine étape avant tout `db push`** (voir aussi
-`PLAN_EXECUTION_PHASE12.md` §1) : obtenir cet accès pour lancer
-`supabase migration list` (historique exhaustif réel, pas un
-échantillon), vérifier la disponibilité d'un backup/PITR côté
-Dashboard, confirmer que seules Push et RevenueCat restent à
-appliquer, et faire une dernière revue des deux fichiers de migration
-avant exécution.
+Aucune divergence : ni migration manquante inattendue parmi les 26
+historiques, ni migration présente côté base sans fichier correspondant
+dans `supabase/migrations/`. La situation est exactement celle prévue
+depuis la Phase 10 : **seules Push et RevenueCat restent à appliquer**,
+dans cet ordre.
 
-```
-supabase login
-supabase link --project-ref btsazmbmslgghlgjkmkw
-supabase migration list
-```
+**Prochaine étape** (voir aussi `PLAN_EXECUTION_PHASE12.md` §1–2) :
+vérifier le mécanisme de sauvegarde/restauration disponible côté
+Lovable Cloud (backup automatique, snapshot, ou équivalent PITR) —
+vérification que vous effectuez séparément dans le Dashboard Lovable
+Cloud — puis préparer (sans l'exécuter) l'application des deux
+migrations via l'environnement Lovable Cloud approprié.
 
 ## 2. Ordre d'application — Push puis RevenueCat
 

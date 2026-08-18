@@ -9,45 +9,50 @@ externe modifiée. Complète [`PRE_RECETTE_CHECKLIST.md`](./PRE_RECETTE_CHECKLIS
 
 ---
 
-## 1. État réel des migrations Supabase — sondage direct, portée limitée
+## 1. État réel des migrations Supabase — confirmation officielle obtenue
 
-Le CLI Supabase n'a toujours pas accès au bon projet. Vérification faite
-autrement : requêtes REST réelles (lecture seule, clé publique déjà
-prévue pour un client) contre la base de production, distinguant
-"table/colonne absente" (`42703`/`PGRST205`) de "présente mais
-inaccessible à ce rôle" (`42501`).
+**Correction de contexte :** Lingo utilise le backend intégré
+**Lovable Cloud**, pas un projet Supabase externe rattaché à un compte
+Supabase personnel. `supabase link`/`supabase migration list` sur un
+compte Supabase personnel n'était pas la bonne voie et **ne doit plus
+être tenté** — ce n'était pas un problème d'accès à résoudre en
+changeant de compte, seulement une hypothèse de départ incorrecte de
+ma part sur la nature du backend.
 
-**Résultat, avec sa portée exacte :**
+Une vérification directe en lecture seule de la vraie base Lovable
+Cloud a été effectuée sur `supabase_migrations.schema_migrations` (la
+table interne qui trace l'historique réel des migrations appliquées)
+— c'est la source faisant autorité, elle remplace le sondage REST
+par échantillon utilisé précédemment (celui-ci restant valable comme
+corroboration indépendante, cf. `PRE_RECETTE_CHECKLIST.md` §1).
 
-| Migration | État |
+**Résultat exhaustif, confirmé officiellement :**
+
+| Migration | État réel confirmé |
 |---|---|
-| `20260818150000` — Push (`device_tokens`, `messages.push_notified_at`) | ❌ **Absente, testé directement** (table et colonne) |
-| `20260818160000` — RevenueCat (`subscriptions.provider*`, `processed_revenuecat_events`) | ❌ **Absente, testé directement** (table et colonnes) |
-| Les 26 migrations antérieures (`20260806042707` → `20260810210705`) | Un échantillon de marqueurs tirés de 5 d'entre elles est présent et **cohérent avec la base distante ; aucune divergence détectée sur les éléments contrôlés**. Ce n'est **pas** une confirmation individuelle des 26 — je n'ai pas vérifié chaque table/colonne/policy de chacune, seulement quelques marqueurs couvrant le début et la fin de la chronologie |
+| 26 migrations historiques (`20260806042707` → `20260810210705`) | ✅ **Toutes enregistrées comme appliquées** |
+| `20260818150000` — Push (`device_tokens`, `messages.push_notified_at`) | ❌ **Non appliquée** |
+| `20260818160000` — RevenueCat (`subscriptions.provider*`, `processed_revenuecat_events`) | ❌ **Non appliquée** |
 
-Sur le point qui compte pour la décision d'appliquer : que Push et
-RevenueCat manquent réellement est **solidement établi**, testé
-directement, pas déduit. Le reste est une indication de cohérence, pas
-une preuve exhaustive. Détail des sondes dans
-`PRE_RECETTE_CHECKLIST.md` §1.
+Aucune divergence détectée. Confirmation exhaustive, pas un
+échantillon : **seules Push et RevenueCat restent à appliquer**, dans
+cet ordre.
 
-**Prochaine étape avant tout `db push`, pas d'exécution maintenant :**
-obtenir l'accès authentifié au bon projet Supabase pour (1) consulter
-l'historique réel via `supabase migration list`, (2) vérifier la
-disponibilité d'un backup/PITR (§2 ci-dessous), (3) reconfirmer avec
-cet outil officiel que seules Push et RevenueCat restent à appliquer,
-(4) faire une dernière revue des deux fichiers de migration.
+**Prochaine étape, pas d'exécution maintenant :** vérifier le
+mécanisme de sauvegarde/restauration disponible côté Lovable Cloud
+(§2 ci-dessous — vous le faites séparément dans le Dashboard Lovable
+Cloud), puis préparer (sans l'exécuter) l'application sécurisée des
+deux migrations via l'environnement Lovable Cloud approprié.
 
 **Non exécuté, aucune migration poussée.**
 
 ## 2. Sauvegarde / capacité de rollback
 
-- **Non vérifiable depuis cet environnement** : savoir si le projet a
-  un plan Supabase incluant le PITR (Point-in-Time Recovery) nécessite
-  un accès au Dashboard (Project Settings → Backups) ou à l'API de
-  gestion Supabase — aucun des deux n'est accessible ici (même
-  limitation que pour `supabase link`). **À vérifier par vous avant
-  toute migration.**
+- **Mécanisme Lovable Cloud à vérifier par vous** (en cours,
+  séparément, dans le Dashboard Lovable Cloud) : backup automatique,
+  snapshot, ou équivalent PITR proposé par Lovable Cloud pour ce
+  projet. Je n'ai pas d'accès à ce Dashboard depuis cet environnement
+  pour le vérifier moi-même.
 - **Méthode de rollback documentée** (SQL fourni à titre informatif
   dans `PRE_RECETTE_CHECKLIST.md` §4, non inclus dans
   `supabase/migrations/`, non testée) : possible dans les deux sens
@@ -106,19 +111,24 @@ Ce qui reste réellement à risque, même si la migration est additive :
 
 ### Étapes prévues (à exécuter uniquement sur votre accord explicite)
 
-```
-supabase login
-supabase link --project-ref btsazmbmslgghlgjkmkw
-supabase migration list                       # confirmation finale avant d'agir
-# --- votre accord requis ici avant de continuer ---
-supabase db push                               # applique les deux migrations dans l'ordre du dépôt
-supabase migration list                        # reconfirmation post-application
-```
+Le mécanisme exact d'application via Lovable Cloud (interface du
+Dashboard Lovable Cloud, synchronisation automatique au merge, ou CLI
+Supabase utilisé depuis un environnement/service authentifié côté
+Lovable) reste à confirmer de votre côté — je n'ai pas visibilité sur
+l'outillage interne de Lovable Cloud depuis cet environnement. Le SQL
+des deux migrations est prêt et relu (`supabase/migrations/20260818150000_...sql`,
+`supabase/migrations/20260818160000_...sql`), dans cet ordre :
 
-Puis revalidation immédiate (sondes REST identiques à celles du §1,
-qui doivent maintenant renvoyer `200` au lieu de `404`/`42703`), et
-vérification qu'un événement Stripe réel (ou un test webhook depuis le
-dashboard Stripe) est toujours traité normalement.
+1. Confirmer le mécanisme et l'environnement Lovable Cloud appropriés.
+2. Confirmer la disponibilité et la méthode du backup (§2).
+3. **Votre accord explicite requis ici avant toute exécution.**
+4. Appliquer la migration Push, puis vérifier.
+5. Appliquer la migration RevenueCat, puis vérifier.
+6. Revalidation immédiate (sondes REST identiques à celles du §1 de
+   `PRE_RECETTE_CHECKLIST.md`, qui doivent maintenant renvoyer `200` au
+   lieu de `404`/`42703`), et vérification qu'un événement Stripe réel
+   (ou un test webhook depuis le dashboard Stripe) est toujours traité
+   normalement.
 
 **Non exécuté.**
 
