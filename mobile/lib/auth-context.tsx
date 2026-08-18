@@ -4,6 +4,7 @@ import type { Session } from "@supabase/supabase-js";
 import { supabase } from "./supabase";
 import { establishSessionFromUrl } from "./deep-link-session";
 import { unregisterPushToken } from "./push-notifications";
+import { logOutRevenueCat } from "./revenuecat";
 
 type AuthContextValue = {
   session: Session | null;
@@ -70,6 +71,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
           // Must run before signOut(): the delete needs auth.uid() from the
           // still-active session to satisfy the device_tokens_own RLS policy.
           await unregisterPushToken();
+          await logOutRevenueCat();
           await supabase.auth.signOut();
           setNeedsPasswordReset(false);
         },

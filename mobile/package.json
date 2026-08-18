@@ -25,6 +25,8 @@
     "nativewind": "^4.2.6",
     "react": "19.2.3",
     "react-native": "0.86.2",
+    "react-native-purchases": "^10.7.1",
+    "react-native-purchases-ui": "^10.7.1",
     "react-native-qrcode-svg": "^6.3.21",
     "react-native-reanimated": "4.5.1",
     "react-native-safe-area-context": "~5.7.0",

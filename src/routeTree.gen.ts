@@ -36,6 +36,7 @@ import { Route as ApiMediaPhotosRouteImport } from './routes/api/media/photos'
 import { Route as ApiMediaVoiceRouteImport } from './routes/api/media/voice'
 import { Route as ApiPreferencesChatRouteImport } from './routes/api/preferences/chat'
 import { Route as ApiPublicDeviceLinkRedeemRouteImport } from './routes/api/public/device-link/redeem'
+import { Route as ApiPublicPaymentsRevenuecatWebhookRouteImport } from './routes/api/public/payments/revenuecat-webhook'
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
 import { Route as ApiChatConversationsConversationIdBackfillRouteImport } from './routes/api/chat/conversations.$conversationId.backfill'
 import { Route as ApiChatMessagesMessageIdTranslateRouteImport } from './routes/api/chat/messages.$messageId.translate'
@@ -182,6 +183,12 @@ const ApiPublicDeviceLinkRedeemRoute =
     path: '/api/public/device-link/redeem',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicPaymentsRevenuecatWebhookRoute =
+  ApiPublicPaymentsRevenuecatWebhookRouteImport.update({
+    id: '/api/public/payments/revenuecat-webhook',
+    path: '/api/public/payments/revenuecat-webhook',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicPaymentsWebhookRoute =
   ApiPublicPaymentsWebhookRouteImport.update({
     id: '/api/public/payments/webhook',
@@ -240,6 +247,7 @@ export interface FileRoutesByFullPath {
   '/api/media/voice': typeof ApiMediaVoiceRouteWithChildren
   '/api/preferences/chat': typeof ApiPreferencesChatRoute
   '/api/public/device-link/redeem': typeof ApiPublicDeviceLinkRedeemRoute
+  '/api/public/payments/revenuecat-webhook': typeof ApiPublicPaymentsRevenuecatWebhookRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/api/chat/conversations/$conversationId/backfill': typeof ApiChatConversationsConversationIdBackfillRoute
   '/api/chat/messages/$messageId/translate': typeof ApiChatMessagesMessageIdTranslateRoute
@@ -273,6 +281,7 @@ export interface FileRoutesByTo {
   '/api/media/voice': typeof ApiMediaVoiceRouteWithChildren
   '/api/preferences/chat': typeof ApiPreferencesChatRoute
   '/api/public/device-link/redeem': typeof ApiPublicDeviceLinkRedeemRoute
+  '/api/public/payments/revenuecat-webhook': typeof ApiPublicPaymentsRevenuecatWebhookRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/api/chat/conversations/$conversationId/backfill': typeof ApiChatConversationsConversationIdBackfillRoute
   '/api/chat/messages/$messageId/translate': typeof ApiChatMessagesMessageIdTranslateRoute
@@ -308,6 +317,7 @@ export interface FileRoutesById {
   '/api/media/voice': typeof ApiMediaVoiceRouteWithChildren
   '/api/preferences/chat': typeof ApiPreferencesChatRoute
   '/api/public/device-link/redeem': typeof ApiPublicDeviceLinkRedeemRoute
+  '/api/public/payments/revenuecat-webhook': typeof ApiPublicPaymentsRevenuecatWebhookRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/api/chat/conversations/$conversationId/backfill': typeof ApiChatConversationsConversationIdBackfillRoute
   '/api/chat/messages/$messageId/translate': typeof ApiChatMessagesMessageIdTranslateRoute
@@ -343,6 +353,7 @@ export interface FileRouteTypes {
     | '/api/media/voice'
     | '/api/preferences/chat'
     | '/api/public/device-link/redeem'
+    | '/api/public/payments/revenuecat-webhook'
     | '/api/public/payments/webhook'
     | '/api/chat/conversations/$conversationId/backfill'
     | '/api/chat/messages/$messageId/translate'
@@ -376,6 +387,7 @@ export interface FileRouteTypes {
     | '/api/media/voice'
     | '/api/preferences/chat'
     | '/api/public/device-link/redeem'
+    | '/api/public/payments/revenuecat-webhook'
     | '/api/public/payments/webhook'
     | '/api/chat/conversations/$conversationId/backfill'
     | '/api/chat/messages/$messageId/translate'
@@ -410,6 +422,7 @@ export interface FileRouteTypes {
     | '/api/media/voice'
     | '/api/preferences/chat'
     | '/api/public/device-link/redeem'
+    | '/api/public/payments/revenuecat-webhook'
     | '/api/public/payments/webhook'
     | '/api/chat/conversations/$conversationId/backfill'
     | '/api/chat/messages/$messageId/translate'
@@ -436,6 +449,7 @@ export interface RootRouteChildren {
   ApiMediaVoiceRoute: typeof ApiMediaVoiceRouteWithChildren
   ApiPreferencesChatRoute: typeof ApiPreferencesChatRoute
   ApiPublicDeviceLinkRedeemRoute: typeof ApiPublicDeviceLinkRedeemRoute
+  ApiPublicPaymentsRevenuecatWebhookRoute: typeof ApiPublicPaymentsRevenuecatWebhookRoute
   ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
   ApiChatConversationsConversationIdBackfillRoute: typeof ApiChatConversationsConversationIdBackfillRoute
   ApiChatMessagesMessageIdTranslateRoute: typeof ApiChatMessagesMessageIdTranslateRoute
@@ -633,6 +647,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicDeviceLinkRedeemRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/payments/revenuecat-webhook': {
+      id: '/api/public/payments/revenuecat-webhook'
+      path: '/api/public/payments/revenuecat-webhook'
+      fullPath: '/api/public/payments/revenuecat-webhook'
+      preLoaderRoute: typeof ApiPublicPaymentsRevenuecatWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/payments/webhook': {
       id: '/api/public/payments/webhook'
       path: '/api/public/payments/webhook'
@@ -730,6 +751,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiMediaVoiceRoute: ApiMediaVoiceRouteWithChildren,
   ApiPreferencesChatRoute: ApiPreferencesChatRoute,
   ApiPublicDeviceLinkRedeemRoute: ApiPublicDeviceLinkRedeemRoute,
+  ApiPublicPaymentsRevenuecatWebhookRoute:
+    ApiPublicPaymentsRevenuecatWebhookRoute,
   ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,
   ApiChatConversationsConversationIdBackfillRoute:
     ApiChatConversationsConversationIdBackfillRoute,

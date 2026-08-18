@@ -646,6 +646,27 @@ export type Database = {
           },
         ]
       }
+      processed_revenuecat_events: {
+        Row: {
+          created_at: string
+          environment: string
+          event_id: string
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          environment: string
+          event_id: string
+          type: string
+        }
+        Update: {
+          created_at?: string
+          environment?: string
+          event_id?: string
+          type?: string
+        }
+        Relationships: []
+      }
       processed_stripe_events: {
         Row: {
           environment: string
@@ -735,11 +756,14 @@ export type Database = {
           current_period_start: string | null
           environment: string
           id: string
-          price_id: string
+          price_id: string | null
           product_id: string
+          provider: string
+          provider_customer_id: string | null
+          provider_subscription_id: string | null
           status: string
-          stripe_customer_id: string
-          stripe_subscription_id: string
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
           updated_at: string | null
           user_id: string
         }
@@ -750,11 +774,14 @@ export type Database = {
           current_period_start?: string | null
           environment?: string
           id?: string
-          price_id: string
+          price_id?: string | null
           product_id: string
+          provider?: string
+          provider_customer_id?: string | null
+          provider_subscription_id?: string | null
           status?: string
-          stripe_customer_id: string
-          stripe_subscription_id: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
           updated_at?: string | null
           user_id: string
         }
@@ -765,11 +792,14 @@ export type Database = {
           current_period_start?: string | null
           environment?: string
           id?: string
-          price_id?: string
+          price_id?: string | null
           product_id?: string
+          provider?: string
+          provider_customer_id?: string | null
+          provider_subscription_id?: string | null
           status?: string
-          stripe_customer_id?: string
-          stripe_subscription_id?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
           updated_at?: string | null
           user_id?: string
         }
