@@ -9,7 +9,7 @@ externe modifiée. Complète [`PRE_RECETTE_CHECKLIST.md`](./PRE_RECETTE_CHECKLIS
 
 ---
 
-## 1. État réel des migrations Supabase — confirmé par preuve directe
+## 1. État réel des migrations Supabase — sondage direct, portée limitée
 
 Le CLI Supabase n'a toujours pas accès au bon projet. Vérification faite
 autrement : requêtes REST réelles (lecture seule, clé publique déjà
@@ -17,17 +17,26 @@ prévue pour un client) contre la base de production, distinguant
 "table/colonne absente" (`42703`/`PGRST205`) de "présente mais
 inaccessible à ce rôle" (`42501`).
 
-**Résultat, confirmé et non plus supposé :**
+**Résultat, avec sa portée exacte :**
 
-| Migration | État réel |
+| Migration | État |
 |---|---|
-| Les 26 migrations antérieures (`20260806042707` → `20260810210705`) | ✅ **Toutes appliquées** — vérifié sur la première, la dernière, et plusieurs intermédiaires (tables *et* colonnes *et* changements de droits RLS) |
-| `20260818150000` — Push (`device_tokens`, `messages.push_notified_at`) | ❌ **Non appliquée** |
-| `20260818160000` — RevenueCat (`subscriptions.provider*`, `processed_revenuecat_events`) | ❌ **Non appliquée** |
+| `20260818150000` — Push (`device_tokens`, `messages.push_notified_at`) | ❌ **Absente, testé directement** (table et colonne) |
+| `20260818160000` — RevenueCat (`subscriptions.provider*`, `processed_revenuecat_events`) | ❌ **Absente, testé directement** (table et colonnes) |
+| Les 26 migrations antérieures (`20260806042707` → `20260810210705`) | Un échantillon de marqueurs tirés de 5 d'entre elles est présent et **cohérent avec la base distante ; aucune divergence détectée sur les éléments contrôlés**. Ce n'est **pas** une confirmation individuelle des 26 — je n'ai pas vérifié chaque table/colonne/policy de chacune, seulement quelques marqueurs couvrant le début et la fin de la chronologie |
 
-Aucune divergence inattendue. La situation est exactement celle
-supposée en Phase 12, désormais vérifiée et non plus déduite. Détail
-complet des sondes dans `PRE_RECETTE_CHECKLIST.md` §1.
+Sur le point qui compte pour la décision d'appliquer : que Push et
+RevenueCat manquent réellement est **solidement établi**, testé
+directement, pas déduit. Le reste est une indication de cohérence, pas
+une preuve exhaustive. Détail des sondes dans
+`PRE_RECETTE_CHECKLIST.md` §1.
+
+**Prochaine étape avant tout `db push`, pas d'exécution maintenant :**
+obtenir l'accès authentifié au bon projet Supabase pour (1) consulter
+l'historique réel via `supabase migration list`, (2) vérifier la
+disponibilité d'un backup/PITR (§2 ci-dessous), (3) reconfirmer avec
+cet outil officiel que seules Push et RevenueCat restent à appliquer,
+(4) faire une dernière revue des deux fichiers de migration.
 
 **Non exécuté, aucune migration poussée.**
 

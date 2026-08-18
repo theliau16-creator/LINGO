@@ -12,7 +12,7 @@ recette écran par écran).
 
 ---
 
-## 1. Migrations Supabase non appliquées — **confirmé par preuve directe**
+## 1. Migrations Supabase non appliquées — sondage direct, portée limitée
 
 Le CLI Supabase reste sans accès (`supabase link --project-ref
 btsazmbmslgghlgjkmkw` échoue toujours avec une erreur de permissions —
@@ -36,20 +36,36 @@ permission RLS (`42501`), ce qui permet de distinguer "n'existe pas" de
 | `device_link_tokens`, `chat_preferences` (tables) | `200 []` chacune | déjà présentes (migration `20260807203443`) |
 | `voice_messages.processing_started_at`/`attempt_count` | `200 []` | déjà présentes (migration `20260810192001`) |
 | `messages.translation_version` | `200 []` | déjà présente (migration `20260810210705`, la **dernière** avant Push/RevenueCat) |
-| `profiles.phone` (accès anon) | `401 42501` *permission denied* (pas *column does not exist*) | le REVOKE de sécurité de `20260810210705` est bien actif — confirme que même cette dernière migration pré-mobile est intégralement appliquée, y compris ses changements de droits |
+| `profiles.phone` (accès anon) | `401 42501` *permission denied* (pas *column does not exist*) | cohérent avec le REVOKE de sécurité de `20260810210705` — cet élément précis de cette migration semble actif |
 
-**Conclusion confirmée (pas une inférence) :** les **26 migrations
-antérieures aux Phases 10/11 sont toutes appliquées** en production —
-vérifié sur un échantillon couvrant la première (`20260807203443`) et
-la toute dernière (`20260810210705`) d'entre elles, tables et colonnes.
-**Seules les 2 migrations nouvelles (Push et RevenueCat) manquent
-réellement**, confirmé au niveau table ET colonne. Aucune divergence
-inattendue détectée.
+**Portée exacte de ce que ce sondage établit — et de ce qu'il n'établit
+pas :**
 
-Cette méthode ne remplace pas `supabase migration list` (qui donnerait
-la liste exhaustive officielle) mais elle est fondée sur des requêtes
-réelles contre la base réelle, pas sur une déduction depuis Git — à
-faire tourner de nouveau après application pour confirmer le résultat :
+- **Solidement établi, testé directement, table ET colonne :** les
+  deux migrations nouvelles (Push, RevenueCat) sont **absentes** de la
+  base distante. Ce point-là ne repose pas sur un échantillon.
+- **Ce que le reste montre :** un échantillon de tables/colonnes tirées
+  de 5 des 26 migrations antérieures (`20260807203443`,
+  `20260807230148`, `20260808115539`, `20260810192001`,
+  `20260810210705`) est présent et cohérent avec ce que ces migrations
+  sont censées avoir produit. **Ce n'est pas une vérification
+  exhaustive des 26 migrations une par une** — je n'ai pas contrôlé
+  chaque table, colonne, contrainte, policy RLS ou fonction de chacune
+  d'elles, seulement quelques marqueurs choisis pour couvrir le début
+  et la fin de la chronologie. Formulation correcte : ces 26 migrations
+  sont **cohérentes avec l'état observé de la base distante, aucune
+  divergence détectée sur les éléments contrôlés** — ce n'est pas
+  l'équivalent d'un `supabase migration list` qui donnerait
+  l'historique exhaustif réel appliqué par Supabase.
+
+Cette méthode ne remplace donc pas un accès authentifié au bon projet.
+**Prochaine étape avant tout `db push`** (voir aussi
+`PLAN_EXECUTION_PHASE12.md` §1) : obtenir cet accès pour lancer
+`supabase migration list` (historique exhaustif réel, pas un
+échantillon), vérifier la disponibilité d'un backup/PITR côté
+Dashboard, confirmer que seules Push et RevenueCat restent à
+appliquer, et faire une dernière revue des deux fichiers de migration
+avant exécution.
 
 ```
 supabase login
