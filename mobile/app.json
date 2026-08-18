@@ -46,7 +46,13 @@
       ],
       "expo-asset",
       "expo-web-browser",
-      "expo-apple-authentication"
+      "expo-apple-authentication",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Lingo a besoin de la caméra pour scanner un QR code de connexion."
+        }
+      ]
     ]
   }
 }

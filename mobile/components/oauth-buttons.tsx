@@ -69,6 +69,14 @@ export function OAuthButtons() {
       >
         <Text className="text-[15px] font-semibold text-foreground">📱 Continuer avec le téléphone</Text>
       </Pressable>
+
+      <Pressable
+        onPress={() => router.push("/qr-sign-in")}
+        disabled={busy !== null}
+        className="h-[52px] flex-row items-center justify-center gap-2 rounded-3xl border border-border bg-secondary"
+      >
+        <Text className="text-[15px] font-semibold text-foreground">🔳 Scanner un QR</Text>
+      </Pressable>
     </View>
   );
 }

@@ -35,6 +35,7 @@ function RootNavigator() {
         <Stack.Screen name="sign-up" />
         <Stack.Screen name="forgot-password" />
         <Stack.Screen name="phone-auth" />
+        <Stack.Screen name="qr-sign-in" />
       </Stack.Protected>
     </Stack>
   );

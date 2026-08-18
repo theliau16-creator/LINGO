@@ -8,10 +8,12 @@ import { useUserSettings } from "@/lib/use-user-settings";
 import { useBlockedUsers } from "@/lib/use-blocked-users";
 import { useAccount } from "@/lib/use-account";
 import { useFriends } from "@/lib/use-friends";
+import { useDeviceLink } from "@/lib/use-device-link";
 import { supabase } from "@/lib/supabase";
 import { LANGUAGES } from "@/lib/languages";
 import { Button } from "@/components/ui/button";
 import { QuotaCard } from "@/components/quota-card";
+import { QrCode } from "@/components/qr-code";
 
 /**
  * Profil + Réglages + compte (Phase 6), fondu dans l'onglet Profil unique
@@ -19,8 +21,10 @@ import { QuotaCard } from "@/components/quota-card";
  * {profile,settings}.tsx, sans avatar upload (n'existe pas côté web non
  * plus : avatar_url n'est jamais modifiable après l'inscription), sans
  * sélecteur de moteur de traduction (un seul moteur, "Lingo AI", pas de
- * choix utilisateur côté web), sans notifications/QR/device-link/admin
- * (hors scope de cette phase).
+ * choix utilisateur côté web), sans notifications/admin (hors scope).
+ * Le QR de connexion d'appareil (Phase 9) est ajouté ci-dessous — le QR
+ * "profil/ami" (`lingo:user:...`, ajout de contact par scan) reste hors
+ * scope : ce n'est pas le système device-link demandé pour cette phase.
  */
 export default function Profile() {
   const { session, signOut } = useAuth();
@@ -30,6 +34,7 @@ export default function Profile() {
   const { blocked, unblock } = useBlockedUsers();
   const { friends } = useFriends();
   const { deleting, exporting, deleteAccount, exportData } = useAccount();
+  const { token: deviceToken, generating: generatingToken, generate: generateDeviceToken } = useDeviceLink();
 
   const [username, setUsername] = useState("");
   const [language, setLanguage] = useState("fr");
@@ -80,6 +85,14 @@ export default function Profile() {
       await signOut();
     } catch (err) {
       Alert.alert("Suppression impossible", err instanceof Error ? err.message : "Réessayez.");
+    }
+  }
+
+  async function handleGenerateDeviceToken() {
+    try {
+      await generateDeviceToken();
+    } catch (err) {
+      Alert.alert("QR indisponible", err instanceof Error ? err.message : "Réessayez.");
     }
   }
 
@@ -167,6 +180,27 @@ export default function Profile() {
             ))}
           </Section>
         ) : null}
+
+        <Section title="Lier un appareil">
+          <View className="rounded-3xl border border-border bg-card p-4">
+            <Text className="text-[13px] text-muted-foreground">
+              Générez un QR code pour connecter un autre appareil à votre compte Lingo. Valable 2 minutes,
+              usage unique.
+            </Text>
+            {deviceToken ? (
+              <View className="mt-4 items-center">
+                <QrCode value={`lingo:login:${deviceToken.token}`} size={180} />
+              </View>
+            ) : null}
+            <Button
+              label={generatingToken ? "Génération…" : deviceToken ? "Générer un nouveau QR" : "Générer un QR"}
+              loading={generatingToken}
+              variant="secondary"
+              onPress={() => void handleGenerateDeviceToken()}
+              className="mt-3"
+            />
+          </View>
+        </Section>
 
         <Section title="Zone sensible">
           <Pressable

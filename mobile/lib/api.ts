@@ -22,22 +22,26 @@ export class ApiError extends Error {
  */
 export async function apiFetch<T>(
   path: string,
-  options?: { method?: "GET" | "POST"; body?: unknown },
+  options?: { method?: "GET" | "POST"; body?: unknown; auth?: boolean },
 ): Promise<T> {
   if (!API_URL) {
     throw new Error("Missing EXPO_PUBLIC_API_URL. Copy .env.example to .env and fill it in.");
   }
 
-  const { data } = await supabase.auth.getSession();
-  const token = data.session?.access_token;
-  if (!token) throw new ApiError(401, "MISSING_TOKEN", "No active session.");
+  const headers: Record<string, string> = {};
+  // auth: false — for the rare public endpoint (e.g. device-link redeem) that
+  // must be reachable before this device has a session at all.
+  if (options?.auth !== false) {
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    if (!token) throw new ApiError(401, "MISSING_TOKEN", "No active session.");
+    headers.Authorization = `Bearer ${token}`;
+  }
+  if (options?.body) headers["Content-Type"] = "application/json";
 
   const response = await fetch(`${API_URL}${path}`, {
     method: options?.method ?? "GET",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      ...(options?.body ? { "Content-Type": "application/json" } : {}),
-    },
+    headers,
     ...(options?.body ? { body: JSON.stringify(options.body) } : {}),
   });
 
