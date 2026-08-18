@@ -21,10 +21,20 @@ type ExpoPushTicket =
   | { status: "error"; message: string; details?: { error?: string } };
 
 /**
- * Sends a batch of Expo push messages and prunes tokens Expo reports dead
- * (DeviceNotRegistered — uninstalled app, revoked permission, etc.). No
- * secret is required for basic sending; EXPO_ACCESS_TOKEN (server-only env,
- * never bundled into the Expo client) is attached when configured, per
+ * Sends a batch of Expo push messages.
+ *
+ * Partial, ticket-level pruning only: Expo's send response ("ticket") can
+ * report DeviceNotRegistered immediately for a token it already knows is
+ * dead, and that case is pruned below. The common real-world case — APNs
+ * telling Expo the app was uninstalled — is only ever reported through a
+ * SEPARATE "receipt" (fetched via POST /v2/push/getReceipts using each
+ * ticket's id, recommended ~15 min after sending, cleared after 24h). That
+ * receipt fetch is NOT implemented here — remaining work, not a hidden
+ * guarantee: a token can keep being sent to (and failing silently) until
+ * receipts are wired up.
+ *
+ * No secret is required for basic sending; EXPO_ACCESS_TOKEN (server-only
+ * env, never bundled into the Expo client) is attached when configured, per
  * Expo's guidance for higher request limits and enhanced security.
  */
 async function sendExpoPush(messages: ExpoPushMessage[], tokenIds: string[], supabaseAdmin: Client) {
@@ -64,11 +74,18 @@ async function sendExpoPush(messages: ExpoPushMessage[], tokenIds: string[], sup
 /**
  * Notifies every OTHER participant of a conversation that a new message
  * arrived — Expo Push (which relays to APNs), used only to wake/alert the
- * app when it isn't open to receive the same event over Realtime. Fires at
- * most once per message (claimed via messages.push_notified_at, the same
- * claim-row pattern as claim_translation_slot) so a translation retry —
- * same messageId, called again — never sends a second push. Never throws:
- * a push failure must not affect message delivery or translation.
+ * app when it isn't open to receive the same event over Realtime.
+ *
+ * messages.push_notified_at is an APPLICATION-LEVEL dedup claim, not a
+ * delivery guarantee: it stops THIS function from re-entering its own send
+ * path for the same messageId (e.g. a translation retry, or
+ * recoverStalledTranslations picking the same message back up), so at most
+ * one attempt is made — it does not confirm the push was actually
+ * delivered, only that we did not try to send it twice. Called
+ * unconditionally at the top of translateMessageForParticipants, before any
+ * translation work, so it is independent of translation success/failure —
+ * see chat.test.ts's "push independence" tests. Never throws: a push
+ * failure must not affect message delivery or translation.
  */
 export async function notifyNewMessage(messageId: string): Promise<void> {
   try {

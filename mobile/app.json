@@ -40,7 +40,6 @@
         "expo-image-picker",
         {
           "photosPermission": "Lingo a besoin d'accéder à vos photos pour les envoyer dans vos conversations.",
-          "cameraPermission": false,
           "microphonePermission": false
         }
       ],

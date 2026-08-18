@@ -16,9 +16,16 @@ Notifications.setNotificationHandler({
   }),
 });
 
+/**
+ * Same fallback Expo's own docs use: `extra.eas.projectId` comes from
+ * app.json (normally written by `eas init`); `easConfig.projectId` is
+ * injected at build/runtime once the project is EAS-linked, and can be
+ * present even before app.json is updated.
+ */
 function easProjectId(): string | undefined {
   const extra = Constants.expoConfig?.extra as { eas?: { projectId?: string } } | undefined;
-  return extra?.eas?.projectId;
+  const easConfig = Constants.easConfig as { projectId?: string } | undefined;
+  return extra?.eas?.projectId ?? easConfig?.projectId;
 }
 
 async function currentPushToken(): Promise<string | null> {
@@ -32,10 +39,19 @@ async function currentPushToken(): Promise<string | null> {
  * Requests notification permission (skipped if already decided) and, once
  * granted, registers this device's Expo push token for `userId` — a plain
  * RLS-gated upsert (device_tokens_own policy), no privileged endpoint
- * needed. Silently no-ops without an EAS project id: `extra.eas.projectId`
- * is not configured yet (external, one-time `eas init`, not a bug — see
- * the Phase 10 report). Never throws: push is a best-effort background
- * task that must not block sign-in or crash the app.
+ * needed. Silently no-ops without an EAS project id: no `eas.json` exists
+ * in this repo yet, so `extra.eas.projectId` resolves to undefined (see
+ * easProjectId above). Two separate one-time external steps are still
+ * needed even once that id exists — `eas init` alone is not enough:
+ *   1. `eas init` (and, per Expo's own docs, `eas credentials` — required
+ *      explicitly when NOT using EAS Build, which this project doesn't)
+ *      to generate/upload the APNs key real devices need.
+ *   2. The aps-environment entitlement itself is already handled: the
+ *      expo-notifications config plugin adds it to Lingo.entitlements
+ *      automatically on every prebuild, no manual Xcode step needed.
+ * Full command sequence documented in the Phase 10 correction report.
+ * Never throws: push is a best-effort background task that must not
+ * block sign-in or crash the app.
  */
 export async function registerForPushNotifications(userId: string): Promise<void> {
   const projectId = easProjectId();

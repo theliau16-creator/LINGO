@@ -150,7 +150,7 @@ describe("notifyNewMessage", () => {
     expect(body[0].body).toBe("📷 Photo");
   });
 
-  it("prunes a device token Expo reports as DeviceNotRegistered", async () => {
+  it("prunes a device token Expo's send response (ticket) already reports as DeviceNotRegistered", async () => {
     const admin = fakeSupabaseAdmin({
       claimedMessage: MESSAGE,
       participants: [{ user_id: "sender-1" }, { user_id: "recipient-1" }],
