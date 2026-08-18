@@ -2,17 +2,15 @@
 
 État de référence après application des migrations Push + RevenueCat sur Lovable Cloud.
 
-## 0. Point bloquant à trancher avant les credentials Apple
+## 0. Bundle identifier final validé
 
-Le bundle identifier iOS actuel est encore :
+Le bundle identifier iOS définitif de Lingo est :
 
-`com.anonymous.lingo`
+`com.lingo.app`
 
-Il ne faut pas créer les credentials Apple/App Store définitifs avec cet identifiant provisoire.
+Il est désormais configuré dans `mobile/app.json` et doit être utilisé de façon cohérente pour EAS, Apple Developer, App Store Connect, APNs et l'app iOS RevenueCat.
 
-Avant `eas credentials`, App Store Connect et la configuration iOS RevenueCat de production, choisir le bundle identifier définitif de Lingo, puis le remplacer dans `app.json` et reconstruire le natif.
-
-`eas init` peut être préparé avant, mais aucune configuration Apple définitive ne doit être créée tant que le bundle identifier final n'est pas validé.
+Ne pas recréer de credentials Apple avec un autre bundle identifier sans décision explicite.
 
 ## 1. EAS — action manuelle requise
 
@@ -51,7 +49,7 @@ Le profil `development` doit utiliser un development client et une distribution 
 
 ## 2. APNs / Push iOS
 
-Pré-requis : compte Apple Developer payant et bundle identifier final.
+Pré-requis : compte Apple Developer payant et bundle identifier final `com.lingo.app`.
 
 Pour un build EAS, laisser EAS gérer les credentials lors du premier build iOS ou utiliser :
 
@@ -62,7 +60,7 @@ eas credentials -p ios
 Vérifier :
 
 - clé APNs configurée ;
-- profil de provisioning compatible avec le bundle identifier final ;
+- profil de provisioning compatible avec `com.lingo.app` ;
 - entitlement `aps-environment` présent dans le build ;
 - `extra.eas.projectId` disponible ;
 - token Expo Push généré sur appareil ;
@@ -115,12 +113,12 @@ Ne jamais mettre `REVENUECAT_WEBHOOK_SECRET` dans `mobile/.env`.
 
 ## 4. RevenueCat + App Store Connect — production/sandbox Apple
 
-À faire uniquement après validation du bundle identifier final et des comptes Apple :
+À faire uniquement après validation des comptes Apple :
 
-1. créer/identifier l'app dans App Store Connect ;
+1. créer/identifier l'app `com.lingo.app` dans App Store Connect ;
 2. accepter les accords Apple nécessaires aux apps payantes/IAP ;
 3. créer le ou les produits d'abonnement ;
-4. connecter l'app Apple à RevenueCat ;
+4. connecter l'app Apple `com.lingo.app` à RevenueCat ;
 5. importer/configurer les produits ;
 6. les rattacher à l'entitlement `premium` ;
 7. les placer dans l'Offering utilisée par l'app ;
@@ -164,7 +162,6 @@ Ne pas inventer prix, période, essai gratuit ou product IDs : demander validati
 ## 6. Ce qui nécessite encore une intervention humaine
 
 - connexion `eas login` / éventuel 2FA ;
-- choix du bundle identifier final ;
 - compte Apple Developer / App Store Connect ;
 - acceptation éventuelle d'accords Apple ;
 - création des produits et choix prix/périodes ;
