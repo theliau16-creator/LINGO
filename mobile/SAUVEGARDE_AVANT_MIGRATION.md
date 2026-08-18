@@ -36,6 +36,33 @@ cet environnement pour l'exécuter moi-même).
 Ces cinq règles sont reprises et détaillées dans les sections
 correspondantes ci-dessous (§3–§6).
 
+## État de référence confirmé (accès direct en lecture seule)
+
+Obtenu via un accès direct en lecture seule à la vraie base Lovable
+Cloud (pas via le navigateur — cette voie n'est plus retentée pour
+cette étape). Aucune donnée modifiée pendant la vérification.
+
+| Élément vérifié | Valeur constatée |
+|---|---|
+| `subscriptions` — nombre de lignes | **0** |
+| `messages` — nombre de lignes | **37** — valeur de référence pour le contrôle post-migration Push (§6) |
+| Schéma `subscriptions` | Toujours pré-migration RevenueCat |
+| `stripe_customer_id`, `stripe_subscription_id`, `price_id` | Toujours `NOT NULL` (confirmé, pas encore assouplis) |
+| Contrainte `UNIQUE` sur `stripe_subscription_id` | Toujours présente |
+| Index, contraintes et policies RLS de `subscriptions` | Relevés dans leur état actuel |
+
+**Conséquence directe sur la stratégie de sauvegarde :** `subscriptions`
+étant vide, il n'y a **aucune donnée d'abonnement à exporter** — le §3
+ci-dessous devient un export trivialement vide (à exécuter quand même,
+pour la forme et pour horodater la confirmation du compte à 0, mais
+sans enjeu de perte de données). La priorité de sauvegarde se déplace
+donc vers **l'état structurel** (§4), qui lui a une vraie valeur de
+comparaison avant/après migration. Le backfill `UPDATE` de la
+migration RevenueCat (§1) porte sur 0 ligne : le risque de perte/
+altération de données réelles pour cette migration est en pratique
+nul, indépendamment du reste de l'analyse de risque (verrous,
+changements de contraintes) qui reste valable telle quelle.
+
 ---
 
 ## 1. Données existantes précisément touchées
@@ -87,6 +114,15 @@ d'un export récent, cf. §3). Aucune table ni colonne existante
 n'entre en jeu.
 
 ## 3. Export complet de `subscriptions` avant RevenueCat
+
+**Mise à jour :** confirmé à 0 ligne (état de référence ci-dessus).
+L'export ci-dessous renverra donc un résultat vide — à exécuter quand
+même juste avant la migration, pour horodater la confirmation et
+détecter toute ligne qui serait apparue entre-temps (ex. un achat web
+Stripe passé pendant la préparation). S'il renvoie autre chose que 0
+ligne au moment de l'exécution réelle, la sauvegarde de données
+redevient nécessaire au sens plein du terme (reprendre alors la
+procédure originale ci-dessous, prévue pour ce cas) :
 
 À exécuter par vous dans le SQL editor de Lovable Cloud (ou le Table
 editor si un export CSV y est proposé) **avant** d'appliquer la
@@ -170,14 +206,14 @@ Avant de considérer la sauvegarde fiable :
 
 1. **Le compte de lignes de l'export (§3) correspond au résumé de
    contrôle** exécuté au même moment (`total_rows` de la requête
-   résumé = nombre de lignes du fichier d'export complet). S'ils ne
-   correspondent pas, l'export a probablement été tronqué (pagination)
-   — à refaire.
-2. **Contrôle ponctuel** : choisissez 2–3 lignes au hasard dans
-   l'export complet (idéalement des `stripe_subscription_id`
-   reconnaissables) et vérifiez que toutes leurs colonnes sont
-   cohérentes avec ce que vous savez de ces abonnements par ailleurs
-   (statut, date).
+   résumé = nombre de lignes du fichier d'export complet — **0**
+   attendu au vu de l'état de référence). S'ils ne correspondent pas,
+   l'export a probablement été tronqué (pagination) — à refaire.
+2. **Contrôle ponctuel** : sans objet tant que `subscriptions` reste à
+   0 ligne. Si des lignes apparaissent avant la migration (cf. §3),
+   revenir à la procédure originale : choisir 2–3 lignes au hasard
+   (idéalement des `stripe_subscription_id` reconnaissables) et
+   vérifier leur cohérence.
 3. **Le fichier s'ouvre correctement** dans l'outil prévu pour le
    relire (éditeur de texte/tableur) — un export corrompu ou mal
    échappé (virgules dans des valeurs, encodage) se détecte à ce
@@ -200,8 +236,11 @@ recommencer avant de continuer.
   `device_tokens` et `messages.push_notified_at` doivent passer de
   `404`/`400` (`PGRST205`/`42703`) à `200`.
 - `SELECT count(*) FROM public.messages;` — le compte doit être
-  **strictement identique** à avant migration (aucune ligne
-  ajoutée/supprimée, seule une colonne a été ajoutée).
+  **strictement identique à 37** (valeur de référence confirmée par
+  accès direct — voir « État de référence confirmé » ci-dessus), sauf
+  nouveaux messages légitimement envoyés entre la prise de référence
+  et la migration (dans ce cas, comparer au compte réel juste avant
+  d'appliquer, pas à 37 en dur). Aucune ligne ne doit disparaître.
 - Vérifier qu'un message peut toujours être envoyé normalement côté
   web/mobile (l'ajout de colonne ne doit rien changer au comportement
   applicatif existant).
@@ -212,10 +251,12 @@ recommencer avant de continuer.
   `subscriptions.provider`, `subscriptions.provider_subscription_id`
   doivent passer à `200`.
 - **Comparer le compte de lignes** : ré-exécuter le résumé de
-  contrôle du §3 — `total_rows` doit être **identique** au chiffre
-  d'avant migration (la migration ne fait qu'`UPDATE`, jamais
-  `INSERT`/`DELETE`). Toute différence = signal d'alerte immédiat,
-  ne pas continuer, investiguer avant toute autre action.
+  contrôle du §3 — `total_rows` doit être **identique au chiffre
+  constaté juste avant la migration** (0 selon l'état de référence
+  actuel, sauf lignes apparues entre-temps — la migration ne fait
+  qu'`UPDATE`, jamais `INSERT`/`DELETE`). Toute différence = signal
+  d'alerte immédiat, ne pas continuer, investiguer avant toute autre
+  action.
 - **[Règle 4] `stripe_customer_id`/`stripe_subscription_id`/`price_id`
   strictement inchangés** : ré-exporter `subscriptions` (même requête
   qu'au §3) et comparer directement, ligne à ligne, avec l'export
@@ -249,6 +290,12 @@ recommencer avant de continuer.
 
 ---
 
-*Plan uniquement. Aucune migration poussée, aucune donnée exportée,
-aucune configuration modifiée, aucun secret affiché. En attente de
-votre accord avant toute exécution.*
+*Plan mis à jour avec l'état de référence confirmé par accès direct en
+lecture seule (`subscriptions` : 0 ligne, `messages` : 37 lignes,
+schéma toujours pré-migration). Aucune migration poussée, aucun code
+modifié, aucune configuration modifiée, aucun secret affiché. L'accès
+Lovable Cloud via navigateur n'est plus retenté pour cette étape.
+Blocages externes restants : authentification EAS/Expo, accès à un
+iPhone physique pour la recette réelle — sans lien avec l'application
+des migrations elle-même. En attente de votre accord avant application
+des migrations Push et RevenueCat.*
