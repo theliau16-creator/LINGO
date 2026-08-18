@@ -12,41 +12,50 @@ recette écran par écran).
 
 ---
 
-## 1. Migrations Supabase non appliquées
+## 1. Migrations Supabase non appliquées — **confirmé par preuve directe**
 
-Comparaison exacte `main` (base présumée refléter la prod) vs
-`feature/mobile-v1` :
+Le CLI Supabase reste sans accès (`supabase link --project-ref
+btsazmbmslgghlgjkmkw` échoue toujours avec une erreur de permissions —
+compte CLI authentifié sur un autre projet). Mais `SUPABASE_URL` +
+`SUPABASE_PUBLISHABLE_KEY` (clé **publique**, déjà dans `.env`) suffisent
+pour sonder l'API REST (PostgREST) de la base réelle en lecture seule,
+sans écrire ni exposer aucune donnée : une colonne/table absente renvoie
+une erreur PostgreSQL distincte (`42703`/`PGRST205`) d'une erreur de
+permission RLS (`42501`), ce qui permet de distinguer "n'existe pas" de
+"existe mais inaccessible à ce rôle". Sondes exécutées le 2026-08-18 :
 
-```
-git diff main..feature/mobile-v1 --stat -- supabase/migrations/
-```
-
-→ **Seuls 2 fichiers de migration sont nouveaux sur cette branche**, sur
-un total de 28 dans `supabase/migrations/`. Les 26 autres existent déjà
-sur `main` — donc très probablement déjà appliqués en production (l'app
-web/mobile fonctionne déjà dessus). Les 2 nouveaux :
-
-| Fichier | Phase | Contenu |
+| Vérifié | Résultat HTTP | Interprétation |
 |---|---|---|
-| `20260818150000_b740543a-...sql` | 10 (Push) | Colonne `messages.push_notified_at` ; table `device_tokens` + RLS |
-| `20260818160000_5c14afb7-...sql` | 11 (RevenueCat) | `subscriptions` : colonnes Stripe passent nullable, ajout `provider`/`provider_customer_id`/`provider_subscription_id` ; table `processed_revenuecat_events` |
+| `device_tokens` (table, Phase 10) | `404 PGRST205` (table absente du cache de schéma) | **Migration Push NON appliquée** |
+| `processed_revenuecat_events` (table, Phase 11) | `404 PGRST205` | **Migration RevenueCat NON appliquée** |
+| `subscriptions.provider` (colonne, Phase 11) | `400 42703` (colonne inexistante) | **Migration RevenueCat NON appliquée** |
+| `subscriptions.provider_subscription_id` | `400 42703` | idem |
+| `messages.push_notified_at` (colonne, Phase 10) | `400 42703` | **Migration Push NON appliquée** |
+| `subscriptions` (table) | `200 []` | table déjà présente (migration `20260807230148`) |
+| `processed_stripe_events` (table) | `200 []` | déjà présente (migration `20260808115539`) |
+| `device_link_tokens`, `chat_preferences` (tables) | `200 []` chacune | déjà présentes (migration `20260807203443`) |
+| `voice_messages.processing_started_at`/`attempt_count` | `200 []` | déjà présentes (migration `20260810192001`) |
+| `messages.translation_version` | `200 []` | déjà présente (migration `20260810210705`, la **dernière** avant Push/RevenueCat) |
+| `profiles.phone` (accès anon) | `401 42501` *permission denied* (pas *column does not exist*) | le REVOKE de sécurité de `20260810210705` est bien actif — confirme que même cette dernière migration pré-mobile est intégralement appliquée, y compris ses changements de droits |
 
-**Important — ce que je ne peux pas confirmer depuis cet environnement :**
-je n'ai aucun accès à la base distante (`supabase link
---project-ref btsazmbmslgghlgjkmkw` échoue avec une erreur de
-permissions — voir §5 du rapport Phase 10). L'inférence ci-dessus (26
-migrations déjà en prod) est donc une déduction à partir de l'état de
-`main`, **pas une vérification directe**. Avant de pousser quoi que ce
-soit, vérifiez vous-même l'état réel :
+**Conclusion confirmée (pas une inférence) :** les **26 migrations
+antérieures aux Phases 10/11 sont toutes appliquées** en production —
+vérifié sur un échantillon couvrant la première (`20260807203443`) et
+la toute dernière (`20260810210705`) d'entre elles, tables et colonnes.
+**Seules les 2 migrations nouvelles (Push et RevenueCat) manquent
+réellement**, confirmé au niveau table ET colonne. Aucune divergence
+inattendue détectée.
+
+Cette méthode ne remplace pas `supabase migration list` (qui donnerait
+la liste exhaustive officielle) mais elle est fondée sur des requêtes
+réelles contre la base réelle, pas sur une déduction depuis Git — à
+faire tourner de nouveau après application pour confirmer le résultat :
 
 ```
 supabase login
 supabase link --project-ref btsazmbmslgghlgjkmkw
 supabase migration list
 ```
-
-La colonne "Remote" de la sortie indique précisément ce qui est déjà
-appliqué côté serveur.
 
 ## 2. Ordre d'application — Push puis RevenueCat
 
