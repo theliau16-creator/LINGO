@@ -1,9 +1,11 @@
 import { Stack } from "expo-router";
 import { View } from "react-native";
 import { useProfile } from "@/lib/use-profile";
+import { usePushNotifications } from "@/lib/use-push-notifications";
 
 export default function ProtectedLayout() {
   const { profile, isLoading } = useProfile();
+  usePushNotifications();
 
   // Same onboarding-needed signal as the web (src/routes/_authenticated/onboarding.tsx):
   // `country` has no DB default and is only ever written by onboarding, while

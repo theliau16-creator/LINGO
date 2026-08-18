@@ -3,6 +3,7 @@ import * as Linking from "expo-linking";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "./supabase";
 import { establishSessionFromUrl } from "./deep-link-session";
+import { unregisterPushToken } from "./push-notifications";
 
 type AuthContextValue = {
   session: Session | null;
@@ -66,6 +67,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
         needsPasswordReset,
         completePasswordReset: () => setNeedsPasswordReset(false),
         signOut: async () => {
+          // Must run before signOut(): the delete needs auth.uid() from the
+          // still-active session to satisfy the device_tokens_own RLS policy.
+          await unregisterPushToken();
           await supabase.auth.signOut();
           setNeedsPasswordReset(false);
         },

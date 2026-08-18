@@ -209,6 +209,12 @@ export async function translateMessageForParticipants(
   if (error) throw new Error(error.message);
   if (!message) throw new Error("Message introuvable.");
 
+  // Fires at most once per message (see notifyNewMessage's claim column) —
+  // safe to call unconditionally even though this function itself can be
+  // re-entered by a translation retry or recoverStalledTranslations.
+  const { notifyNewMessage } = await import("./push.server");
+  await notifyNewMessage(messageId);
+
   const targets = await participantLanguages(supabase, message.conversation_id);
   targets.delete(message.source_language);
 
