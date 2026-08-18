@@ -12,7 +12,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.lingo",
+      "bundleIdentifier": "com.lingo.app",
       "usesAppleSignIn": true
     },
     "android": {
