@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Alert, Text, View } from "react-native";
 import { Link } from "expo-router";
+import * as Linking from "expo-linking";
 import { supabase } from "@/lib/supabase";
 import { Screen } from "@/components/screen";
 import { Button } from "@/components/ui/button";
@@ -22,7 +23,13 @@ export default function SignUp() {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { username: username || email.split("@")[0] } },
+      options: {
+        data: { username: username || email.split("@")[0] },
+        // Without this, Supabase falls back to the project's dashboard Site
+        // URL for the confirmation link, dumping the user on a web login
+        // page instead of back in the app.
+        emailRedirectTo: Linking.createURL("/sign-in"),
+      },
     });
     setLoading(false);
     if (error) {

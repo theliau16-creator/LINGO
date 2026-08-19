@@ -1,10 +1,18 @@
 import { Stack } from "expo-router";
 import { View } from "react-native";
-import { useProfile } from "@/lib/use-profile";
+import { ProfileProvider, useProfile } from "@/lib/use-profile";
 import { usePushNotifications } from "@/lib/use-push-notifications";
 import { useRevenueCatSession } from "@/lib/use-revenuecat";
 
 export default function ProtectedLayout() {
+  return (
+    <ProfileProvider>
+      <ProtectedNavigator />
+    </ProfileProvider>
+  );
+}
+
+function ProtectedNavigator() {
   const { profile, isLoading } = useProfile();
   usePushNotifications();
   useRevenueCatSession();
