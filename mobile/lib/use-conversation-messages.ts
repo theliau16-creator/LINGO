@@ -155,8 +155,11 @@ export function useConversationMessages(conversationId: string) {
   // as the server fans them out — same three subscriptions as the web
   // (message_receipts is skipped, out of scope for Phase 3).
   useEffect(() => {
+    // Unique per effect run — see the comment in use-friends.ts: a fixed
+    // topic can collide with a same-named channel that's still mid-teardown
+    // from a fast remount, and supabase-js then throws on `.on()`.
     const channel = supabase
-      .channel(`conversation-${conversationId}`)
+      .channel(`conversation-${conversationId}-${Math.random().toString(36).slice(2)}`)
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "messages", filter: `conversation_id=eq.${conversationId}` },

@@ -64,8 +64,13 @@ export function useFriends() {
 
   useEffect(() => {
     if (!userId) return;
+    // Unique per effect run: `removeChannel` is async, so a fast
+    // remount (RN dev double-invoke, quick tab-away-and-back) can call
+    // `.channel()` again with the same topic before the old channel has
+    // finished tearing down — supabase-js then hands back that still-
+    // subscribed channel instead of a fresh one, and `.on()` throws.
     const channel = supabase
-      .channel(`social-${userId}`)
+      .channel(`social-${userId}-${Math.random().toString(36).slice(2)}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "friend_requests" }, () => void refetch())
       .on("postgres_changes", { event: "*", schema: "public", table: "friendships" }, () => void refetch())
       .subscribe();

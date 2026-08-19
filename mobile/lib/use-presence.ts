@@ -18,32 +18,46 @@ export function usePresence(options: { conversationId: string; userId: string | 
 
   useEffect(() => {
     if (!userId) return;
-    const channel = supabase.channel(`presence-${conversationId}`, {
-      config: { presence: { key: userId } },
-    });
-    channelRef.current = channel;
+    let cancelled = false;
+    const topic = `presence-${conversationId}`;
 
-    channel
-      .on("presence", { event: "sync" }, () => {
-        const state = channel.presenceState() as Record<string, unknown[]>;
-        setPeerOnline(Object.keys(state).some((key) => key !== userId));
-      })
-      .on("broadcast", { event: "typing" }, (payload) => {
-        const from = (payload["payload"] as { userId?: string } | undefined)?.userId;
-        if (!from || from === userId) return;
-        setPeerTyping(true);
-        if (typingTimer.current) clearTimeout(typingTimer.current);
-        typingTimer.current = setTimeout(() => setPeerTyping(false), TYPING_TTL);
-      })
-      .subscribe((status) => {
-        if (status === "SUBSCRIBED" && shareStatus) {
-          void channel.track({ userId, at: Date.now() });
-        }
-      });
+    // The topic must stay deterministic (both participants need to land in
+    // the same room), so unlike the other realtime hooks we can't dodge
+    // stale-channel collisions with a random suffix. `removeChannel` is
+    // async, so a fast re-run of this effect (e.g. `shareStatus` toggling)
+    // can otherwise find the old, still-subscribed channel for this same
+    // topic and crash on `.on()` — explicitly await its teardown first.
+    void (async () => {
+      const stale = supabase.getChannels().find((c) => c.topic === `realtime:${topic}`);
+      if (stale) await supabase.removeChannel(stale);
+      if (cancelled) return;
+
+      const channel = supabase.channel(topic, { config: { presence: { key: userId } } });
+      channelRef.current = channel;
+
+      channel
+        .on("presence", { event: "sync" }, () => {
+          const state = channel.presenceState() as Record<string, unknown[]>;
+          setPeerOnline(Object.keys(state).some((key) => key !== userId));
+        })
+        .on("broadcast", { event: "typing" }, (payload) => {
+          const from = (payload["payload"] as { userId?: string } | undefined)?.userId;
+          if (!from || from === userId) return;
+          setPeerTyping(true);
+          if (typingTimer.current) clearTimeout(typingTimer.current);
+          typingTimer.current = setTimeout(() => setPeerTyping(false), TYPING_TTL);
+        })
+        .subscribe((status) => {
+          if (status === "SUBSCRIBED" && shareStatus) {
+            void channel.track({ userId, at: Date.now() });
+          }
+        });
+    })();
 
     return () => {
+      cancelled = true;
       if (typingTimer.current) clearTimeout(typingTimer.current);
-      void supabase.removeChannel(channel);
+      if (channelRef.current) void supabase.removeChannel(channelRef.current);
       channelRef.current = null;
     };
   }, [conversationId, userId, shareStatus]);

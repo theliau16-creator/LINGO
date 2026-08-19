@@ -149,8 +149,11 @@ export function useConversations(myLanguage: string) {
   // same behaviour as the web (src/routes/_authenticated/chats.tsx).
   useEffect(() => {
     if (!userId) return;
+    // Unique per effect run — see the comment in use-friends.ts: a fixed
+    // topic can collide with a same-named channel that's still mid-teardown
+    // from a fast remount, and supabase-js then throws on `.on()`.
     const channel = supabase
-      .channel("chats-overview")
+      .channel(`chats-overview-${userId}-${Math.random().toString(36).slice(2)}`)
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "messages" },
