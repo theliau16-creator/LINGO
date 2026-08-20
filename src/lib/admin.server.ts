@@ -4,7 +4,6 @@ import { FREE_TRANSLATION_LIMIT } from "./quota.server";
 
 type Client = SupabaseClient<Database>;
 
-const PREMIUM_PRICE_IDS = ["lingo_premium_monthly", "lingo_premium_yearly"];
 const PREMIUM_STATUSES = ["active", "trialing", "past_due", "canceled"];
 
 /** Throws unless the caller holds the admin role (checked as the caller, not as admin). */
@@ -39,15 +38,18 @@ export async function listAccounts(): Promise<AdminAccount[]> {
       .order("created_at", { ascending: false })
       .limit(500),
     supabaseAdmin.from("translation_usage").select("user_id, used"),
-    supabaseAdmin.from("subscriptions").select("user_id, status, price_id, current_period_end"),
+    supabaseAdmin.from("subscriptions").select("user_id, status, current_period_end"),
   ]);
 
   const usedBy = new Map((usage.data ?? []).map((row) => [row.user_id, row.used]));
+  // Provider-agnostic on purpose, mirrors is_premium_user() (the backend's
+  // single source of truth): status + period only, same as useSubscription()
+  // on the web. A price_id check here would miss RevenueCat-premium users,
+  // who have no Stripe price_id at all.
   const premium = new Set(
     (subscriptions.data ?? [])
       .filter(
         (row) =>
-          PREMIUM_PRICE_IDS.includes(row.price_id) &&
           PREMIUM_STATUSES.includes(row.status) &&
           (!row.current_period_end || new Date(row.current_period_end).getTime() > Date.now()),
       )

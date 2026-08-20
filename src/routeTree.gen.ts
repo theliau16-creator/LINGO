@@ -29,12 +29,19 @@ import { Route as JoinCodeRouteImport } from './routes/join.$code'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as AuthenticatedChatConversationIdRouteImport } from './routes/_authenticated/chat.$conversationId'
+import { Route as ApiAccountDeleteRouteImport } from './routes/api/account/delete'
+import { Route as ApiAccountExportRouteImport } from './routes/api/account/export'
 import { Route as ApiDeviceLinkTokenRouteImport } from './routes/api/device-link/token'
+import { Route as ApiMediaPhotosRouteImport } from './routes/api/media/photos'
+import { Route as ApiMediaVoiceRouteImport } from './routes/api/media/voice'
 import { Route as ApiPreferencesChatRouteImport } from './routes/api/preferences/chat'
 import { Route as ApiPublicDeviceLinkRedeemRouteImport } from './routes/api/public/device-link/redeem'
+import { Route as ApiPublicPaymentsRevenuecatWebhookRouteImport } from './routes/api/public/payments/revenuecat-webhook'
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
+import { Route as ApiChatConversationsConversationIdBackfillRouteImport } from './routes/api/chat/conversations.$conversationId.backfill'
 import { Route as ApiChatMessagesMessageIdTranslateRouteImport } from './routes/api/chat/messages.$messageId.translate'
 import { Route as ApiChatMessagesMessageIdTranslationRouteImport } from './routes/api/chat/messages.$messageId.translation'
+import { Route as ApiMediaVoiceMessageIdTranscribeRouteImport } from './routes/api/media/voice.$messageId.transcribe'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -140,9 +147,29 @@ const AuthenticatedChatConversationIdRoute =
     path: '/chat/$conversationId',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const ApiAccountDeleteRoute = ApiAccountDeleteRouteImport.update({
+  id: '/api/account/delete',
+  path: '/api/account/delete',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAccountExportRoute = ApiAccountExportRouteImport.update({
+  id: '/api/account/export',
+  path: '/api/account/export',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiDeviceLinkTokenRoute = ApiDeviceLinkTokenRouteImport.update({
   id: '/api/device-link/token',
   path: '/api/device-link/token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiMediaPhotosRoute = ApiMediaPhotosRouteImport.update({
+  id: '/api/media/photos',
+  path: '/api/media/photos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiMediaVoiceRoute = ApiMediaVoiceRouteImport.update({
+  id: '/api/media/voice',
+  path: '/api/media/voice',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPreferencesChatRoute = ApiPreferencesChatRouteImport.update({
@@ -156,10 +183,22 @@ const ApiPublicDeviceLinkRedeemRoute =
     path: '/api/public/device-link/redeem',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicPaymentsRevenuecatWebhookRoute =
+  ApiPublicPaymentsRevenuecatWebhookRouteImport.update({
+    id: '/api/public/payments/revenuecat-webhook',
+    path: '/api/public/payments/revenuecat-webhook',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicPaymentsWebhookRoute =
   ApiPublicPaymentsWebhookRouteImport.update({
     id: '/api/public/payments/webhook',
     path: '/api/public/payments/webhook',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiChatConversationsConversationIdBackfillRoute =
+  ApiChatConversationsConversationIdBackfillRouteImport.update({
+    id: '/api/chat/conversations/$conversationId/backfill',
+    path: '/api/chat/conversations/$conversationId/backfill',
     getParentRoute: () => rootRouteImport,
   } as any)
 const ApiChatMessagesMessageIdTranslateRoute =
@@ -173,6 +212,12 @@ const ApiChatMessagesMessageIdTranslationRoute =
     id: '/api/chat/messages/$messageId/translation',
     path: '/api/chat/messages/$messageId/translation',
     getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiMediaVoiceMessageIdTranscribeRoute =
+  ApiMediaVoiceMessageIdTranscribeRouteImport.update({
+    id: '/$messageId/transcribe',
+    path: '/$messageId/transcribe',
+    getParentRoute: () => ApiMediaVoiceRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
@@ -195,12 +240,19 @@ export interface FileRoutesByFullPath {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/chat/$conversationId': typeof AuthenticatedChatConversationIdRoute
+  '/api/account/delete': typeof ApiAccountDeleteRoute
+  '/api/account/export': typeof ApiAccountExportRoute
   '/api/device-link/token': typeof ApiDeviceLinkTokenRoute
+  '/api/media/photos': typeof ApiMediaPhotosRoute
+  '/api/media/voice': typeof ApiMediaVoiceRouteWithChildren
   '/api/preferences/chat': typeof ApiPreferencesChatRoute
   '/api/public/device-link/redeem': typeof ApiPublicDeviceLinkRedeemRoute
+  '/api/public/payments/revenuecat-webhook': typeof ApiPublicPaymentsRevenuecatWebhookRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
+  '/api/chat/conversations/$conversationId/backfill': typeof ApiChatConversationsConversationIdBackfillRoute
   '/api/chat/messages/$messageId/translate': typeof ApiChatMessagesMessageIdTranslateRoute
   '/api/chat/messages/$messageId/translation': typeof ApiChatMessagesMessageIdTranslationRoute
+  '/api/media/voice/$messageId/transcribe': typeof ApiMediaVoiceMessageIdTranscribeRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -222,12 +274,19 @@ export interface FileRoutesByTo {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/chat/$conversationId': typeof AuthenticatedChatConversationIdRoute
+  '/api/account/delete': typeof ApiAccountDeleteRoute
+  '/api/account/export': typeof ApiAccountExportRoute
   '/api/device-link/token': typeof ApiDeviceLinkTokenRoute
+  '/api/media/photos': typeof ApiMediaPhotosRoute
+  '/api/media/voice': typeof ApiMediaVoiceRouteWithChildren
   '/api/preferences/chat': typeof ApiPreferencesChatRoute
   '/api/public/device-link/redeem': typeof ApiPublicDeviceLinkRedeemRoute
+  '/api/public/payments/revenuecat-webhook': typeof ApiPublicPaymentsRevenuecatWebhookRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
+  '/api/chat/conversations/$conversationId/backfill': typeof ApiChatConversationsConversationIdBackfillRoute
   '/api/chat/messages/$messageId/translate': typeof ApiChatMessagesMessageIdTranslateRoute
   '/api/chat/messages/$messageId/translation': typeof ApiChatMessagesMessageIdTranslationRoute
+  '/api/media/voice/$messageId/transcribe': typeof ApiMediaVoiceMessageIdTranscribeRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -251,12 +310,19 @@ export interface FileRoutesById {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/_authenticated/chat/$conversationId': typeof AuthenticatedChatConversationIdRoute
+  '/api/account/delete': typeof ApiAccountDeleteRoute
+  '/api/account/export': typeof ApiAccountExportRoute
   '/api/device-link/token': typeof ApiDeviceLinkTokenRoute
+  '/api/media/photos': typeof ApiMediaPhotosRoute
+  '/api/media/voice': typeof ApiMediaVoiceRouteWithChildren
   '/api/preferences/chat': typeof ApiPreferencesChatRoute
   '/api/public/device-link/redeem': typeof ApiPublicDeviceLinkRedeemRoute
+  '/api/public/payments/revenuecat-webhook': typeof ApiPublicPaymentsRevenuecatWebhookRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
+  '/api/chat/conversations/$conversationId/backfill': typeof ApiChatConversationsConversationIdBackfillRoute
   '/api/chat/messages/$messageId/translate': typeof ApiChatMessagesMessageIdTranslateRoute
   '/api/chat/messages/$messageId/translation': typeof ApiChatMessagesMessageIdTranslationRoute
+  '/api/media/voice/$messageId/transcribe': typeof ApiMediaVoiceMessageIdTranscribeRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -280,12 +346,19 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/chat/$conversationId'
+    | '/api/account/delete'
+    | '/api/account/export'
     | '/api/device-link/token'
+    | '/api/media/photos'
+    | '/api/media/voice'
     | '/api/preferences/chat'
     | '/api/public/device-link/redeem'
+    | '/api/public/payments/revenuecat-webhook'
     | '/api/public/payments/webhook'
+    | '/api/chat/conversations/$conversationId/backfill'
     | '/api/chat/messages/$messageId/translate'
     | '/api/chat/messages/$messageId/translation'
+    | '/api/media/voice/$messageId/transcribe'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -307,12 +380,19 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/chat/$conversationId'
+    | '/api/account/delete'
+    | '/api/account/export'
     | '/api/device-link/token'
+    | '/api/media/photos'
+    | '/api/media/voice'
     | '/api/preferences/chat'
     | '/api/public/device-link/redeem'
+    | '/api/public/payments/revenuecat-webhook'
     | '/api/public/payments/webhook'
+    | '/api/chat/conversations/$conversationId/backfill'
     | '/api/chat/messages/$messageId/translate'
     | '/api/chat/messages/$messageId/translation'
+    | '/api/media/voice/$messageId/transcribe'
   id:
     | '__root__'
     | '/'
@@ -335,12 +415,19 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/_authenticated/chat/$conversationId'
+    | '/api/account/delete'
+    | '/api/account/export'
     | '/api/device-link/token'
+    | '/api/media/photos'
+    | '/api/media/voice'
     | '/api/preferences/chat'
     | '/api/public/device-link/redeem'
+    | '/api/public/payments/revenuecat-webhook'
     | '/api/public/payments/webhook'
+    | '/api/chat/conversations/$conversationId/backfill'
     | '/api/chat/messages/$messageId/translate'
     | '/api/chat/messages/$messageId/translation'
+    | '/api/media/voice/$messageId/transcribe'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -355,10 +442,16 @@ export interface RootRouteChildren {
   JoinCodeRoute: typeof JoinCodeRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
+  ApiAccountDeleteRoute: typeof ApiAccountDeleteRoute
+  ApiAccountExportRoute: typeof ApiAccountExportRoute
   ApiDeviceLinkTokenRoute: typeof ApiDeviceLinkTokenRoute
+  ApiMediaPhotosRoute: typeof ApiMediaPhotosRoute
+  ApiMediaVoiceRoute: typeof ApiMediaVoiceRouteWithChildren
   ApiPreferencesChatRoute: typeof ApiPreferencesChatRoute
   ApiPublicDeviceLinkRedeemRoute: typeof ApiPublicDeviceLinkRedeemRoute
+  ApiPublicPaymentsRevenuecatWebhookRoute: typeof ApiPublicPaymentsRevenuecatWebhookRoute
   ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
+  ApiChatConversationsConversationIdBackfillRoute: typeof ApiChatConversationsConversationIdBackfillRoute
   ApiChatMessagesMessageIdTranslateRoute: typeof ApiChatMessagesMessageIdTranslateRoute
   ApiChatMessagesMessageIdTranslationRoute: typeof ApiChatMessagesMessageIdTranslationRoute
 }
@@ -505,11 +598,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedChatConversationIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/api/account/delete': {
+      id: '/api/account/delete'
+      path: '/api/account/delete'
+      fullPath: '/api/account/delete'
+      preLoaderRoute: typeof ApiAccountDeleteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/account/export': {
+      id: '/api/account/export'
+      path: '/api/account/export'
+      fullPath: '/api/account/export'
+      preLoaderRoute: typeof ApiAccountExportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/device-link/token': {
       id: '/api/device-link/token'
       path: '/api/device-link/token'
       fullPath: '/api/device-link/token'
       preLoaderRoute: typeof ApiDeviceLinkTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/media/photos': {
+      id: '/api/media/photos'
+      path: '/api/media/photos'
+      fullPath: '/api/media/photos'
+      preLoaderRoute: typeof ApiMediaPhotosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/media/voice': {
+      id: '/api/media/voice'
+      path: '/api/media/voice'
+      fullPath: '/api/media/voice'
+      preLoaderRoute: typeof ApiMediaVoiceRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/preferences/chat': {
@@ -526,11 +647,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicDeviceLinkRedeemRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/payments/revenuecat-webhook': {
+      id: '/api/public/payments/revenuecat-webhook'
+      path: '/api/public/payments/revenuecat-webhook'
+      fullPath: '/api/public/payments/revenuecat-webhook'
+      preLoaderRoute: typeof ApiPublicPaymentsRevenuecatWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/payments/webhook': {
       id: '/api/public/payments/webhook'
       path: '/api/public/payments/webhook'
       fullPath: '/api/public/payments/webhook'
       preLoaderRoute: typeof ApiPublicPaymentsWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/chat/conversations/$conversationId/backfill': {
+      id: '/api/chat/conversations/$conversationId/backfill'
+      path: '/api/chat/conversations/$conversationId/backfill'
+      fullPath: '/api/chat/conversations/$conversationId/backfill'
+      preLoaderRoute: typeof ApiChatConversationsConversationIdBackfillRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/chat/messages/$messageId/translate': {
@@ -546,6 +681,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/chat/messages/$messageId/translation'
       preLoaderRoute: typeof ApiChatMessagesMessageIdTranslationRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/api/media/voice/$messageId/transcribe': {
+      id: '/api/media/voice/$messageId/transcribe'
+      path: '/$messageId/transcribe'
+      fullPath: '/api/media/voice/$messageId/transcribe'
+      preLoaderRoute: typeof ApiMediaVoiceMessageIdTranscribeRouteImport
+      parentRoute: typeof ApiMediaVoiceRoute
     }
   }
 }
@@ -577,6 +719,18 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
 const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
+interface ApiMediaVoiceRouteChildren {
+  ApiMediaVoiceMessageIdTranscribeRoute: typeof ApiMediaVoiceMessageIdTranscribeRoute
+}
+
+const ApiMediaVoiceRouteChildren: ApiMediaVoiceRouteChildren = {
+  ApiMediaVoiceMessageIdTranscribeRoute: ApiMediaVoiceMessageIdTranscribeRoute,
+}
+
+const ApiMediaVoiceRouteWithChildren = ApiMediaVoiceRoute._addFileChildren(
+  ApiMediaVoiceRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
@@ -590,10 +744,18 @@ const rootRouteChildren: RootRouteChildren = {
   JoinCodeRoute: JoinCodeRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
+  ApiAccountDeleteRoute: ApiAccountDeleteRoute,
+  ApiAccountExportRoute: ApiAccountExportRoute,
   ApiDeviceLinkTokenRoute: ApiDeviceLinkTokenRoute,
+  ApiMediaPhotosRoute: ApiMediaPhotosRoute,
+  ApiMediaVoiceRoute: ApiMediaVoiceRouteWithChildren,
   ApiPreferencesChatRoute: ApiPreferencesChatRoute,
   ApiPublicDeviceLinkRedeemRoute: ApiPublicDeviceLinkRedeemRoute,
+  ApiPublicPaymentsRevenuecatWebhookRoute:
+    ApiPublicPaymentsRevenuecatWebhookRoute,
   ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,
+  ApiChatConversationsConversationIdBackfillRoute:
+    ApiChatConversationsConversationIdBackfillRoute,
   ApiChatMessagesMessageIdTranslateRoute:
     ApiChatMessagesMessageIdTranslateRoute,
   ApiChatMessagesMessageIdTranslationRoute:

@@ -271,6 +271,33 @@ export type Database = {
         }
         Relationships: []
       }
+      device_tokens: {
+        Row: {
+          created_at: string
+          id: string
+          platform: string
+          token: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          platform: string
+          token: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          platform?: string
+          token?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       friend_requests: {
         Row: {
           created_at: string
@@ -542,6 +569,7 @@ export type Database = {
           id: string
           message_type: string
           original_text: string
+          push_notified_at: string | null
           reply_to_message_id: string | null
           sender_id: string | null
           source_language: string
@@ -562,6 +590,7 @@ export type Database = {
           id?: string
           message_type?: string
           original_text: string
+          push_notified_at?: string | null
           reply_to_message_id?: string | null
           sender_id?: string | null
           source_language?: string
@@ -582,6 +611,7 @@ export type Database = {
           id?: string
           message_type?: string
           original_text?: string
+          push_notified_at?: string | null
           reply_to_message_id?: string | null
           sender_id?: string | null
           source_language?: string
@@ -614,6 +644,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      processed_revenuecat_events: {
+        Row: {
+          created_at: string
+          environment: string
+          event_id: string
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          environment: string
+          event_id: string
+          type: string
+        }
+        Update: {
+          created_at?: string
+          environment?: string
+          event_id?: string
+          type?: string
+        }
+        Relationships: []
       }
       processed_stripe_events: {
         Row: {
@@ -704,11 +755,14 @@ export type Database = {
           current_period_start: string | null
           environment: string
           id: string
-          price_id: string
+          price_id: string | null
           product_id: string
+          provider: string
+          provider_customer_id: string | null
+          provider_subscription_id: string | null
           status: string
-          stripe_customer_id: string
-          stripe_subscription_id: string
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
           updated_at: string | null
           user_id: string
         }
@@ -719,11 +773,14 @@ export type Database = {
           current_period_start?: string | null
           environment?: string
           id?: string
-          price_id: string
+          price_id?: string | null
           product_id: string
+          provider?: string
+          provider_customer_id?: string | null
+          provider_subscription_id?: string | null
           status?: string
-          stripe_customer_id: string
-          stripe_subscription_id: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
           updated_at?: string | null
           user_id: string
         }
@@ -734,11 +791,14 @@ export type Database = {
           current_period_start?: string | null
           environment?: string
           id?: string
-          price_id?: string
+          price_id?: string | null
           product_id?: string
+          provider?: string
+          provider_customer_id?: string | null
+          provider_subscription_id?: string | null
           status?: string
-          stripe_customer_id?: string
-          stripe_subscription_id?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
           updated_at?: string | null
           user_id?: string
         }

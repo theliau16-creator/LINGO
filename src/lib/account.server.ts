@@ -13,13 +13,22 @@ type Client = SupabaseClient<Database>;
 export async function deleteAccount(supabase: Client, userId: string) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-  // 1. Stripe — cancel every non-terminated subscription of this user.
+  // 1. Stripe — cancel every non-terminated Stripe subscription of this
+  // user. RevenueCat/App Store rows are skipped on purpose: their billing
+  // relationship is owned by Apple, not us, and can't be cancelled through
+  // the Stripe API — the user cancels those themselves via iOS Settings,
+  // same as any other App Store subscription. Either way, the row itself
+  // disappears with the rest of this account via the FK's ON DELETE CASCADE
+  // once step 4 removes the auth user; this loop is only about stopping
+  // future external billing before that happens.
   const { data: subscriptions } = await supabaseAdmin
     .from("subscriptions")
     .select("stripe_subscription_id, status, environment")
-    .eq("user_id", userId);
+    .eq("user_id", userId)
+    .not("stripe_subscription_id", "is", null);
 
   for (const subscription of subscriptions ?? []) {
+    if (!subscription.stripe_subscription_id) continue;
     if (["canceled", "incomplete_expired"].includes(subscription.status)) continue;
     try {
       const { createStripeClient } = await import("@/lib/stripe.server");

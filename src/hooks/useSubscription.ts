@@ -2,7 +2,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { useCurrentUser } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { getStripeEnvironment, isPaymentsConfigured, PREMIUM_PRICE_IDS } from "@/lib/stripe";
+import { getStripeEnvironment, isPaymentsConfigured } from "@/lib/stripe";
 
 export type SubscriptionState = {
   isPremium: boolean;
@@ -60,12 +60,13 @@ export function useSubscription(): SubscriptionState {
   const status = row?.status ?? null;
   const periodEnd = row?.current_period_end ?? null;
   const stillInPeriod = !periodEnd || new Date(periodEnd).getTime() > Date.now();
-  const isPremiumPrice = row?.price_id ? PREMIUM_PRICE_IDS.includes(row.price_id) : false;
 
+  // Provider-agnostic on purpose, mirrors is_premium_user() (the backend's
+  // single source of truth) exactly: status + period only. Used to gate the
+  // Stripe-price-id check here — a user premium via RevenueCat/mobile has no
+  // Stripe price_id at all, and would otherwise show as non-premium on web.
   const isPremium =
-    isPremiumPrice &&
-    stillInPeriod &&
-    ["active", "trialing", "past_due", "canceled"].includes(status ?? "");
+    stillInPeriod && ["active", "trialing", "past_due", "canceled"].includes(status ?? "");
 
   return {
     isPremium,

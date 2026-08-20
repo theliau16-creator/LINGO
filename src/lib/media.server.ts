@@ -7,7 +7,7 @@ import {
   assertAudioPlayable,
   assertImageObject,
   audioFileName,
-  isOwnedStoragePath,
+  isPathInConversation,
   MAX_PHOTOS_PER_MESSAGE,
   sniffAudioContainer,
 } from "./media-validation";
@@ -42,10 +42,11 @@ export async function sendPhotoMessage(
   const caption = (input.caption ?? "").trim().slice(0, 1000);
 
   // Server-side gate: the client cannot claim a size/type the storage object
-  // does not actually have, nor reference someone else's upload.
+  // does not actually have, nor attach a file uploaded into a different
+  // conversation's folder (see isPathInConversation in media-validation.ts).
   const supabaseAdmin = await admin();
   for (const attachment of input.attachments) {
-    if (!isOwnedStoragePath(attachment.path, userId)) {
+    if (!isPathInConversation(attachment.path, input.conversationId)) {
       throw new Error("Fichier non autorisé.");
     }
     const folder = attachment.path.split("/").slice(0, -1).join("/");
@@ -172,6 +173,17 @@ export async function sendVoiceMessage(
   userId: string,
   input: { conversationId: string; path: string; durationMs: number; language: string },
 ) {
+  // Same gate as sendPhotoMessage, same primitive: the recording must live in
+  // THIS message's conversation folder, not one merely uploaded into a
+  // different shared conversation. Storage/RLS for chat-media is identical
+  // for audio and images (bucket-level policies, not type-specific), and
+  // both uploaders (web's objectPath(), mobile's uploadMediaFile()) already
+  // write voice recordings under the same conversationId/... convention as
+  // photos — this was a missing check, not a different convention to adopt.
+  if (!isPathInConversation(input.path, input.conversationId)) {
+    throw new Error("Fichier non autorisé.");
+  }
+
   const attachment: Attachment = {
     path: input.path,
     type: "audio",
