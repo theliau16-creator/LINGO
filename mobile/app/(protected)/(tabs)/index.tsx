@@ -1,7 +1,10 @@
 import { useMemo, useState } from "react";
-import { ActivityIndicator, FlatList, Pressable, RefreshControl, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, FlatList, Image, Pressable, RefreshControl, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
+import { BlurView } from "expo-blur";
+import Svg, { Defs, LinearGradient, RadialGradient, Rect, Stop } from "react-native-svg";
+import { Search, UserPlus } from "lucide-react-native";
 import { useAuth } from "@/lib/auth-context";
 import { useProfile } from "@/lib/use-profile";
 import { useConversations, type ConversationRow } from "@/lib/use-conversations";
@@ -37,19 +40,81 @@ export default function Chats() {
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={["top"]}>
-      <View className="flex-1 px-4 pt-2">
-        <Text className="mb-4 text-[22px] font-bold text-foreground">Discussions</Text>
+      <Svg
+        pointerEvents="none"
+        style={{ position: "absolute", top: 0, left: 0, right: 0, height: 340 }}
+        viewBox="0 0 402 340"
+      >
+        <Defs>
+          <RadialGradient id="haloLeft" cx="48" cy="-34" r="360" gradientUnits="userSpaceOnUse">
+            <Stop offset="0" stopColor="#337bff" stopOpacity={0.26} />
+            <Stop offset="0.2" stopColor="#337bff" stopOpacity={0.16} />
+            <Stop offset="0.35" stopColor="#337bff" stopOpacity={0.08} />
+            <Stop offset="0.5" stopColor="#337bff" stopOpacity={0.03} />
+            <Stop offset="0.58" stopColor="#337bff" stopOpacity={0} />
+            <Stop offset="1" stopColor="#337bff" stopOpacity={0} />
+          </RadialGradient>
+          <RadialGradient id="haloRight" cx="382" cy="27" r="340" gradientUnits="userSpaceOnUse">
+            <Stop offset="0" stopColor="#aa6ef3" stopOpacity={0.22} />
+            <Stop offset="0.2" stopColor="#aa6ef3" stopOpacity={0.14} />
+            <Stop offset="0.35" stopColor="#aa6ef3" stopOpacity={0.07} />
+            <Stop offset="0.5" stopColor="#aa6ef3" stopOpacity={0.025} />
+            <Stop offset="0.6" stopColor="#aa6ef3" stopOpacity={0} />
+            <Stop offset="1" stopColor="#aa6ef3" stopOpacity={0} />
+          </RadialGradient>
+        </Defs>
+        <Rect x="0" y="0" width="402" height="340" fill="url(#haloLeft)" />
+        <Rect x="0" y="0" width="402" height="340" fill="url(#haloRight)" />
+      </Svg>
+      <View className="flex-1 px-4 pb-24 pt-1">
+        <View className="mb-3 flex-row items-start justify-between gap-3">
+          <View className="flex-1">
+            <Text className="text-[30px] font-bold leading-9 tracking-[-0.75px] text-foreground">Discussions</Text>
+            <Text className="mt-1 text-[14px] leading-5 text-muted-foreground">
+              Chaque message arrive dans votre langue
+            </Text>
+          </View>
+          <Pressable
+            onPress={() => router.push("/friends")}
+            className="h-11 w-11 items-center justify-center rounded-2xl active:opacity-80"
+            style={{
+              backgroundColor: "#6e74f9",
+              shadowColor: "#337bff",
+              shadowOpacity: 0.6,
+              shadowRadius: 14,
+              shadowOffset: { width: 0, height: 6 },
+              elevation: 8,
+            }}
+          >
+            <UserPlus size={20} color="#fbfcfe" />
+          </Pressable>
+        </View>
 
-        <View className="mb-3 flex-row items-center gap-2 rounded-3xl border border-border bg-secondary px-4 py-3">
-          <Text className="text-muted-foreground">🔍</Text>
+        <BlurView
+          intensity={45}
+          tint="dark"
+          style={{
+            marginBottom: 20,
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 12,
+            borderRadius: 40,
+            borderWidth: 1,
+            borderColor: "rgba(255,255,255,0.10)",
+            paddingHorizontal: 16,
+            paddingVertical: 12,
+            overflow: "hidden",
+          }}
+        >
+          <Search size={16} color="#9598a4" />
           <TextInput
             value={search}
             onChangeText={setSearch}
-            placeholder="Rechercher"
+            placeholder="Rechercher une conversation"
             placeholderTextColor="#9598a4"
             className="flex-1 text-[15px] text-foreground"
           />
-        </View>
+        </BlurView>
 
         {session?.user.id && !isLoading && !error ? (
           <FlatList
@@ -95,17 +160,34 @@ function ConversationItem({
 }) {
   const isGroup = conversation.type === "group";
   const name = isGroup ? (conversation.name ?? "Groupe") : (conversation.peer?.username ?? "Lingo");
+  const avatarUrl = isGroup ? conversation.avatar_url : conversation.peer?.avatar_url;
 
   return (
     <Pressable
       onPress={onPress}
-      className="flex-row items-center gap-3 rounded-3xl border border-border bg-card p-3 active:opacity-80"
+      className="overflow-hidden rounded-3xl active:opacity-80"
+      style={{ borderWidth: 1, borderColor: "rgba(255,255,255,0.10)" }}
     >
-      <View className="h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary">
-        <Text className="text-[15px] font-bold text-primary-foreground">
-          {isGroup ? "👥" : name.slice(0, 1).toUpperCase()}
-        </Text>
-      </View>
+      <BlurView intensity={25} tint="dark" style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} />
+      <View className="flex-row items-center gap-3 p-3">
+      {avatarUrl ? (
+        <Image source={{ uri: avatarUrl }} className="h-12 w-12 shrink-0 rounded-full bg-primary" />
+      ) : (
+        <View className="h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full">
+          <Svg width={48} height={48} style={{ position: "absolute" }}>
+            <Defs>
+              <LinearGradient id="avatarBrand" x1="0" y1="0" x2="1" y2="1">
+                <Stop offset="0" stopColor="#337bff" />
+                <Stop offset="1" stopColor="#aa6ef3" />
+              </LinearGradient>
+            </Defs>
+            <Rect width="48" height="48" fill="url(#avatarBrand)" />
+          </Svg>
+          <Text className="text-[15px] font-bold text-primary-foreground">
+            {isGroup ? "👥" : name.slice(0, 1).toUpperCase()}
+          </Text>
+        </View>
+      )}
       <View className="min-w-0 flex-1">
         <View className="flex-row items-baseline justify-between gap-2">
           <Text numberOfLines={1} className="flex-1 font-semibold text-foreground">
@@ -113,12 +195,13 @@ function ConversationItem({
           </Text>
           <Text className="shrink-0 text-[11px] text-muted-foreground">{timeAgo(conversation.last_message_at)}</Text>
         </View>
-        <Text numberOfLines={1} className="text-[13px] text-muted-foreground">
+        <Text numberOfLines={1} className="text-[14px] text-muted-foreground">
           {conversation.preview ?? "Dites bonjour 👋"}
         </Text>
         <Text numberOfLines={1} className="mt-0.5 text-[11px] text-muted-foreground/80">
           {isGroup ? `${conversation.memberCount} participants` : `parle ${languageLabel(conversation.peer?.primary_language)}`}
         </Text>
+      </View>
       </View>
     </Pressable>
   );

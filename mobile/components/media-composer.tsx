@@ -2,6 +2,8 @@ import { useRef, useState } from "react";
 import { ActivityIndicator, Alert, Image, Pressable, ScrollView, Text, View } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { AudioModule, RecordingPresets, useAudioRecorder } from "expo-audio";
+import { BlurView } from "expo-blur";
+import { ImagePlus, Mic, Square } from "lucide-react-native";
 import { uploadMediaFile, type Attachment } from "@/lib/upload-media";
 import { sendPhotoMessage, sendVoiceMessage, transcribeVoice } from "@/lib/use-media";
 
@@ -157,24 +159,54 @@ export function MediaComposer({ conversationId, language, onSent }: { conversati
       ) : null}
 
       <View className="flex-row items-center gap-1">
-        <Pressable
-          onPress={() => void pickPhotos()}
-          disabled={busy || recording}
-          className={`h-11 w-11 items-center justify-center rounded-3xl bg-secondary ${busy || recording ? "opacity-40" : ""}`}
-        >
-          <Text className="text-[16px]">🖼️</Text>
+        <Pressable onPress={() => void pickPhotos()} disabled={busy || recording} className={busy || recording ? "opacity-40" : ""}>
+          <BlurView
+            intensity={45}
+            tint="dark"
+            style={{
+              height: 44,
+              width: 44,
+              borderRadius: 40,
+              alignItems: "center",
+              justifyContent: "center",
+              overflow: "hidden",
+              borderWidth: 1,
+              borderColor: "rgba(255,255,255,0.10)",
+              backgroundColor: "rgba(255,255,255,0.06)",
+            }}
+          >
+            <ImagePlus size={16} color="#9598a4" />
+          </BlurView>
         </Pressable>
 
         <Pressable
           onPress={() => (recording ? void stopRecording() : void startRecording())}
           disabled={busy && !recording}
-          className={`h-11 w-11 items-center justify-center rounded-3xl ${recording ? "bg-destructive" : "bg-secondary"} ${busy && !recording ? "opacity-40" : ""}`}
+          className={busy && !recording ? "opacity-40" : ""}
         >
-          {uploadingVoice ? (
-            <ActivityIndicator color="#9598a4" />
-          ) : (
-            <Text className="text-[16px]">{recording ? "⏹️" : "🎙️"}</Text>
-          )}
+          <BlurView
+            intensity={45}
+            tint="dark"
+            style={{
+              height: 44,
+              width: 44,
+              borderRadius: 40,
+              alignItems: "center",
+              justifyContent: "center",
+              overflow: "hidden",
+              borderWidth: 1,
+              borderColor: recording ? "#f52e44" : "rgba(255,255,255,0.10)",
+              backgroundColor: recording ? "rgba(245,46,68,0.25)" : "rgba(255,255,255,0.06)",
+            }}
+          >
+            {uploadingVoice ? (
+              <ActivityIndicator color="#9598a4" />
+            ) : recording ? (
+              <Square size={16} color="#f52e44" />
+            ) : (
+              <Mic size={16} color="#9598a4" />
+            )}
+          </BlurView>
         </Pressable>
         {recording ? (
           <Text className="text-[12px] text-destructive">{Math.floor(elapsedMs / 1000)}s</Text>

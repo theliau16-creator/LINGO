@@ -1,5 +1,6 @@
 import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import Svg, { Defs, RadialGradient, Rect, Stop } from "react-native-svg";
 import { useAuth } from "@/lib/auth-context";
 import { useFriends, type Person } from "@/lib/use-friends";
 import { useContactActions, useContactState } from "@/lib/use-contact-actions";
@@ -15,6 +16,32 @@ export default function Friends() {
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={["top"]}>
+      <Svg
+        pointerEvents="none"
+        style={{ position: "absolute", top: 0, left: 0, right: 0, height: 340 }}
+        viewBox="0 0 402 340"
+      >
+        <Defs>
+          <RadialGradient id="friendsHaloLeft" cx="48" cy="-34" r="360" gradientUnits="userSpaceOnUse">
+            <Stop offset="0" stopColor="#337bff" stopOpacity={0.26} />
+            <Stop offset="0.2" stopColor="#337bff" stopOpacity={0.16} />
+            <Stop offset="0.35" stopColor="#337bff" stopOpacity={0.08} />
+            <Stop offset="0.5" stopColor="#337bff" stopOpacity={0.03} />
+            <Stop offset="0.58" stopColor="#337bff" stopOpacity={0} />
+            <Stop offset="1" stopColor="#337bff" stopOpacity={0} />
+          </RadialGradient>
+          <RadialGradient id="friendsHaloRight" cx="382" cy="27" r="340" gradientUnits="userSpaceOnUse">
+            <Stop offset="0" stopColor="#aa6ef3" stopOpacity={0.22} />
+            <Stop offset="0.2" stopColor="#aa6ef3" stopOpacity={0.14} />
+            <Stop offset="0.35" stopColor="#aa6ef3" stopOpacity={0.07} />
+            <Stop offset="0.5" stopColor="#aa6ef3" stopOpacity={0.025} />
+            <Stop offset="0.6" stopColor="#aa6ef3" stopOpacity={0} />
+            <Stop offset="1" stopColor="#aa6ef3" stopOpacity={0} />
+          </RadialGradient>
+        </Defs>
+        <Rect x="0" y="0" width="402" height="340" fill="url(#friendsHaloLeft)" />
+        <Rect x="0" y="0" width="402" height="340" fill="url(#friendsHaloRight)" />
+      </Svg>
       <ScrollView contentContainerClassName="gap-6 px-4 pb-8 pt-2">
         <Text className="text-[22px] font-bold text-foreground">Amis</Text>
 

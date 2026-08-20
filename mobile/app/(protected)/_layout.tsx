@@ -31,7 +31,7 @@ function ProtectedNavigator() {
 
       <Stack.Protected guard={!needsOnboarding}>
         <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="chat/[conversationId]" options={{ headerShown: true, title: "" }} />
+        <Stack.Screen name="chat/[conversationId]" options={{ headerShown: false, title: "" }} />
         <Stack.Screen name="premium" options={{ headerShown: true, presentation: "modal" }} />
       </Stack.Protected>
     </Stack>

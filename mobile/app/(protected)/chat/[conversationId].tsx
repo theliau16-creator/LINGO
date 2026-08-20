@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -10,7 +11,10 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { router, Stack, useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
+import { BlurView } from "expo-blur";
+import Svg, { Defs, LinearGradient, RadialGradient, Rect, Stop } from "react-native-svg";
+import { ArrowLeft, BrainCircuit, Palette, RefreshCw, SendHorizontal, UserPlus } from "lucide-react-native";
 import { useAuth } from "@/lib/auth-context";
 import { useProfile } from "@/lib/use-profile";
 import {
@@ -58,6 +62,7 @@ export default function ChatDetail() {
   const isGroup = meta?.type === "group" || others.length > 1;
   const peer = others[0] ?? null;
   const title = isGroup ? (meta?.name ?? "Groupe") : (peer?.username ?? "Lingo");
+  const avatarUrl = isGroup ? meta?.avatar_url : peer?.avatar_url;
 
   const [draft, setDraft] = useState("");
   const listRef = useRef<FlatList>(null);
@@ -74,25 +79,113 @@ export default function ChatDetail() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-background" edges={["bottom"]}>
-      <Stack.Screen
-        options={{
-          headerTitle: () => (
-            <View>
-              <Text className="text-[15px] font-semibold text-foreground">{title}</Text>
-              <Text className="text-[11px] text-muted-foreground">
-                {peerTyping
-                  ? "écrit…"
-                  : isGroup
-                    ? `${others.length + 1} participants`
-                    : peerOnline
-                      ? "en ligne"
-                      : `parle ${languageLabel(peer?.primary_language)}`}
-              </Text>
-            </View>
-          ),
+    <SafeAreaView className="flex-1 bg-background" edges={["top", "bottom"]}>
+      <Svg
+        pointerEvents="none"
+        style={{ position: "absolute", top: 0, left: 0, right: 0, height: 460 }}
+        viewBox="0 0 402 460"
+      >
+        <Defs>
+          <RadialGradient id="chatHaloLeft" cx="48" cy="-34" r="360" gradientUnits="userSpaceOnUse">
+            <Stop offset="0" stopColor="#337bff" stopOpacity={0.26} />
+            <Stop offset="0.2" stopColor="#337bff" stopOpacity={0.16} />
+            <Stop offset="0.35" stopColor="#337bff" stopOpacity={0.08} />
+            <Stop offset="0.5" stopColor="#337bff" stopOpacity={0.03} />
+            <Stop offset="0.58" stopColor="#337bff" stopOpacity={0} />
+            <Stop offset="1" stopColor="#337bff" stopOpacity={0} />
+          </RadialGradient>
+          <RadialGradient id="chatHaloRight" cx="382" cy="27" r="340" gradientUnits="userSpaceOnUse">
+            <Stop offset="0" stopColor="#aa6ef3" stopOpacity={0.22} />
+            <Stop offset="0.2" stopColor="#aa6ef3" stopOpacity={0.14} />
+            <Stop offset="0.35" stopColor="#aa6ef3" stopOpacity={0.07} />
+            <Stop offset="0.5" stopColor="#aa6ef3" stopOpacity={0.025} />
+            <Stop offset="0.6" stopColor="#aa6ef3" stopOpacity={0} />
+            <Stop offset="1" stopColor="#aa6ef3" stopOpacity={0} />
+          </RadialGradient>
+        </Defs>
+        <Rect x="0" y="0" width="402" height="460" fill="url(#chatHaloLeft)" />
+        <Rect x="0" y="0" width="402" height="460" fill="url(#chatHaloRight)" />
+      </Svg>
+
+      <BlurView
+        intensity={70}
+        tint="dark"
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 12,
+          paddingHorizontal: 16,
+          paddingVertical: 12,
+          borderBottomWidth: 1,
+          borderBottomColor: "rgba(255,255,255,0.10)",
+          backgroundColor: "rgba(255,255,255,0.06)",
         }}
-      />
+      >
+        <Pressable
+          onPress={() => router.back()}
+          className="h-9 w-9 items-center justify-center rounded-2xl active:opacity-70"
+        >
+          <ArrowLeft size={20} color="#9598a4" />
+        </Pressable>
+
+        {avatarUrl ? (
+          <Image source={{ uri: avatarUrl }} className="h-10 w-10 rounded-full bg-primary" />
+        ) : (
+          <View className="h-10 w-10 items-center justify-center overflow-hidden rounded-full">
+            <Svg width={40} height={40} style={{ position: "absolute" }}>
+              <Defs>
+                <LinearGradient id="headerAvatarBrand" x1="0" y1="0" x2="1" y2="1">
+                  <Stop offset="0" stopColor="#337bff" />
+                  <Stop offset="1" stopColor="#aa6ef3" />
+                </LinearGradient>
+              </Defs>
+              <Rect width="40" height="40" fill="url(#headerAvatarBrand)" />
+            </Svg>
+            <Text className="text-[14px] font-bold text-primary-foreground">
+              {title.slice(0, 1).toUpperCase()}
+            </Text>
+          </View>
+        )}
+
+        <View className="min-w-0 flex-1">
+          <Text numberOfLines={1} className="font-semibold text-foreground">
+            {title}
+          </Text>
+          <Text numberOfLines={1} className="text-[11px] text-muted-foreground">
+            {peerTyping ? (
+              "écrit…"
+            ) : isGroup ? (
+              `${others.length + 1} participants`
+            ) : peerOnline ? (
+              <Text className="text-emerald-400">en ligne</Text>
+            ) : (
+              `parle ${languageLabel(peer?.primary_language)}`
+            )}
+          </Text>
+        </View>
+
+        {!isGroup ? (
+          <View className="flex-row items-center gap-2">
+            {[UserPlus, BrainCircuit, Palette].map((Icon, index) => (
+              <View
+                key={index}
+                style={{
+                  height: 36,
+                  width: 36,
+                  borderRadius: 32,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backgroundColor: "rgba(255,255,255,0.06)",
+                  borderWidth: 1,
+                  borderColor: "rgba(255,255,255,0.10)",
+                }}
+              >
+                <Icon size={16} color="#9598a4" />
+              </View>
+            ))}
+          </View>
+        ) : null}
+      </BlurView>
 
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} className="flex-1">
         {isLoading ? (
@@ -148,10 +241,21 @@ export default function ChatDetail() {
           />
         )}
 
-        <View className="border-t border-border px-3 py-3">
+        <BlurView
+          intensity={70}
+          tint="dark"
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 8,
+            paddingHorizontal: 12,
+            paddingVertical: 12,
+            borderTopWidth: 1,
+            borderTopColor: "rgba(255,255,255,0.10)",
+            backgroundColor: "rgba(255,255,255,0.06)",
+          }}
+        >
           <MediaComposer conversationId={conversationId} language={myLanguage} onSent={() => void refetch()} />
-        </View>
-        <View className="flex-row items-center gap-2 px-3 pb-3">
           <TextInput
             value={draft}
             onChangeText={(text) => {
@@ -161,18 +265,53 @@ export default function ChatDetail() {
             placeholder={`Écrire en ${languageLabel(myLanguage)}…`}
             placeholderTextColor="#9598a4"
             multiline
-            className="max-h-28 flex-1 rounded-3xl border border-border bg-secondary px-4 py-3 text-[15px] text-foreground"
+            style={{
+              height: 48,
+              borderRadius: 40,
+              paddingHorizontal: 16,
+              backgroundColor: "rgba(255,255,255,0.06)",
+              borderWidth: 1,
+              borderColor: "rgba(255,255,255,0.10)",
+            }}
+            className="flex-1 text-[15px] text-foreground"
           />
           <Pressable
             onPress={handleSend}
             disabled={!draft.trim()}
-            className={`h-12 w-12 items-center justify-center rounded-3xl bg-primary ${!draft.trim() ? "opacity-40" : ""}`}
+            className={`h-12 w-12 items-center justify-center rounded-3xl ${!draft.trim() ? "opacity-40" : ""}`}
+            style={{
+              backgroundColor: "#6e74f9",
+              shadowColor: "#337bff",
+              shadowOpacity: 0.6,
+              shadowRadius: 14,
+              shadowOffset: { width: 0, height: 6 },
+              elevation: 6,
+            }}
           >
-            <Text className="text-[18px] text-primary-foreground">➤</Text>
+            <SendHorizontal size={20} color="#fbfcfe" />
           </Pressable>
-        </View>
+        </BlurView>
       </KeyboardAvoidingView>
     </SafeAreaView>
+  );
+}
+
+function HeaderAction({ Icon }: { Icon: typeof UserPlus }) {
+  return (
+    <BlurView
+      intensity={45}
+      tint="dark"
+      style={{
+        height: 36,
+        width: 36,
+        borderRadius: 32,
+        alignItems: "center",
+        justifyContent: "center",
+        overflow: "hidden",
+      }}
+    >
+      <Icon size={16} color="#9598a4" />
+    </BlurView>
   );
 }
 
@@ -219,24 +358,53 @@ function MessageBubble({
 
       {showTextBlock ? (
         <>
-          <View
-            className={`max-w-[80%] rounded-3xl px-4 py-2.5 ${
-              mine ? "rounded-br-lg bg-primary" : "rounded-bl-lg bg-card"
-            }`}
-          >
-            {waiting ? (
-              <View className="flex-row items-center gap-2 opacity-70">
-                <ActivityIndicator size="small" color={mine ? "#fbfcfe" : "#9598a4"} />
-                <Text className={`text-[15px] ${mine ? "text-primary-foreground" : "text-foreground"}`}>
-                  Traduction…
-                </Text>
-              </View>
-            ) : (
-              <Text className={`text-[15px] leading-snug ${mine ? "text-primary-foreground" : "text-foreground"}`}>
-                {body}
-              </Text>
-            )}
-          </View>
+          {mine ? (
+            <View
+              className="max-w-[80%] rounded-3xl px-4 py-2.5"
+              style={{
+                borderBottomRightRadius: 16,
+                backgroundColor: "#6e74f9",
+                shadowColor: "#337bff",
+                shadowOpacity: 0.6,
+                shadowRadius: 14,
+                shadowOffset: { width: 0, height: 6 },
+                elevation: 6,
+              }}
+            >
+              {waiting ? (
+                <View className="flex-row items-center gap-2 opacity-70">
+                  <ActivityIndicator size="small" color="#fbfcfe" />
+                  <Text className="text-[15px] text-primary-foreground">Traduction…</Text>
+                </View>
+              ) : (
+                <Text className="text-[15px] leading-snug text-primary-foreground">{body}</Text>
+              )}
+            </View>
+          ) : (
+            <BlurView
+              intensity={35}
+              tint="dark"
+              style={{
+                maxWidth: "80%",
+                borderRadius: 40,
+                borderBottomLeftRadius: 16,
+                paddingHorizontal: 16,
+                paddingVertical: 10,
+                borderWidth: 1,
+                borderColor: "rgba(255,255,255,0.10)",
+                overflow: "hidden",
+              }}
+            >
+              {waiting ? (
+                <View className="flex-row items-center gap-2 opacity-70">
+                  <ActivityIndicator size="small" color="#9598a4" />
+                  <Text className="text-[15px] text-foreground">Traduction…</Text>
+                </View>
+              ) : (
+                <Text className="text-[15px] leading-snug text-foreground">{body}</Text>
+              )}
+            </BlurView>
+          )}
 
           <View className="mt-1 flex-row items-center gap-3 px-2">
             {translated ? (
@@ -254,7 +422,8 @@ function MessageBubble({
               </Pressable>
             ) : failed ? (
               <Pressable onPress={onRetryTranslation} className="flex-row items-center gap-1">
-                <Text className="text-[11px] text-amber-400">↻ La traduction a échoué — réessayer</Text>
+                <RefreshCw size={12} color="#fbbf24" />
+                <Text className="text-[11px] text-amber-400">La traduction a échoué — réessayer</Text>
               </Pressable>
             ) : null}
           </View>
